@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environnements virtuels
+.venv/
+venv/
+env/
+ENV/
+
+# Variables d'environnement
+.env
+.env.*
+
+# Base de donnees
+*.db
+*.sqlite3
+
+# ChromaDB (donnees vectorielles locales)
+chroma_db/
+
+# Tests
+.pytest_cache/
+pytest.ini
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

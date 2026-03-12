@@ -1,0 +1,151 @@
+import asyncio
+import logging
+
+from services.ai.llm import format_chunks, parse_response, generate
+from services.ai.ruff_runner import run_ruff_on_files
+from services.rag.embeddings import get_embedding
+from services.rag.indexer import retrieve_chunks
+
+logger = logging.getLogger(__name__)
+
+
+async def run_quality_check(collection_name: str, files: list[dict]) -> dict:
+    """Detecte les problemes de qualite via Ruff (factuel) + LLM (complement)."""
+    logger.info("Quality check demarree (collection=%s, %d fichiers)", collection_name, len(files))
+
+    # Embedding + Ruff en parallele
+    query = "function class method definition implementation logic duplicate"
+    embedding_task = get_embedding(query)
+    ruff_task = run_ruff_on_files(files)
+
+    embedding, ruff_issues = await asyncio.gather(embedding_task, ruff_task)
+    logger.info(f"Ruff: {len(ruff_issues)} issues detectees")
+
+    chunks = retrieve_chunks(collection_name, query, embedding, n_results=10)
+    context = format_chunks(chunks)
+
+    prompt = f"""Tu es un expert en qualite logicielle strict et precis.
+
+Analyse ces extraits de code et detecte UNIQUEMENT :
+- Code duplique : deux blocs quasi-identiques dans des fichiers differents
+- Logique morte ou code inatteignable
+
+REGLES STRICTES :
+- NE SIGNALE PAS les imports inutilises, bare except, fonctions longues, trop de parametres — c'est deja couvert par un linter
+- Chaque issue DOIT citer le fichier exact ("file_path") ET un extrait du code concerne dans "code_hint" (copiable pour Ctrl+F)
+- NE SIGNALE PAS les choix d'architecture ou de design
+- NE SIGNALE PAS les fichiers de config ou de test
+- NE SUPPOSE RIEN qui n'est pas dans le code fourni
+- Si tu n'es pas certain a 90%+, NE SIGNALE PAS
+- Maximum 3 issues
+
+{context}
+
+Reponds UNIQUEMENT en JSON valide, sans balises markdown. Tout le contenu (titres, descriptions, recommandations) DOIT etre en francais.
+Si aucun probleme reel : "issues" = [].
+
+FORMAT :
+{{
+  "issues": [
+    {{
+      "severity": "<high|medium|low>",
+      "title": "<titre court>",
+      "file_path": "<chemin exact du fichier>",
+      "description": "<explication claire et courte>",
+      "code_hint": "<extrait exact du code concerne, copiable pour recherche>"
+    }}
+  ]
+}}"""
+
+    raw = await generate(prompt)
+    llm_result = parse_response(raw)
+    llm_issues = llm_result.get("issues", [])
+    for issue in llm_issues:
+        issue["source"] = "llm"
+
+    # --- Merge ---
+    all_issues = ruff_issues + llm_issues
+    status = "issues_found" if all_issues else "clean"
+
+    recommendations = []
+    if ruff_issues:
+        recommendations.append({
+            "priority": "medium",
+            "message": f"Ruff a detecte {len(ruff_issues)} probleme(s) — corrigez-les avec : ruff check --fix"
+        })
+
+    logger.info("Quality check terminee: %d ruff + %d llm = %d issues", len(ruff_issues), len(llm_issues), len(all_issues))
+    return {
+        "status": status,
+        "issues": all_issues,
+        "recommendations": recommendations,
+    }
+
+
+async def run_readme_check(
+    collection_name: str,
+    readme_chunks: list[dict],
+) -> dict:
+    """Verifie la coherence entre le README et le code."""
+    logger.info("README check demarree (collection=%s, %d chunks readme)", collection_name, len(readme_chunks))
+    if not readme_chunks:
+        return {
+            "status": "unavailable",
+            "issues": [],
+            "recommendations": [],
+            "message": "Analyse README vs Code non disponible — aucun README.md detecte dans ce repository."
+        }
+
+    query = "endpoint route function feature implementation"
+    embedding = await get_embedding(query)
+    chunks = retrieve_chunks(collection_name, query, embedding, n_results=10)
+
+    readme_text = "\n\n".join([c["content"] for c in readme_chunks])
+    code_context = format_chunks(chunks)
+
+    prompt = f"""Tu es un expert en qualite logicielle strict et precis.
+
+Voici le README du projet :
+{readme_text}
+
+Voici des extraits du code :
+{code_context}
+
+Compare les deux et detecte UNIQUEMENT les incoherences reelles :
+- Features ou endpoints mentionnes dans le README mais ABSENTS du code
+- Instructions d'installation incorrectes (mauvais nom de package, commande erronee)
+- Documentation qui contredit clairement le code
+
+REGLES STRICTES :
+- NE SIGNALE PAS les features du code absentes du README (le README n'a pas a tout documenter)
+- NE SIGNALE PAS les ameliorations possibles du README
+- NE SUPPOSE PAS — base-toi uniquement sur ce qui est ecrit
+- Si le README est globalement correct, reponds "clean"
+
+Reponds UNIQUEMENT en JSON valide, sans balises markdown. Tout le contenu (titres, descriptions, recommandations) DOIT etre en francais.
+Si tout est coherent : "status" = "clean" et "issues" = [].
+
+FORMAT :
+{{
+  "status": "<issues_found|clean>",
+  "issues": [
+    {{
+      "severity": "<critical|high|medium|low>",
+      "title": "<titre court>",
+      "file_path": "README.md",
+      "description": "<ce qui est incoherent>",
+      "code_hint": "<extrait exact du README concerne, copiable pour recherche>"
+    }}
+  ],
+  "recommendations": [
+    {{
+      "priority": "<high|medium|low>",
+      "message": "<recommandation actionnable>"
+    }}
+  ]
+}}"""
+
+    raw = await generate(prompt)
+    result = parse_response(raw)
+    logger.info("README check terminee: %d issues", len(result.get("issues", [])))
+    return result
