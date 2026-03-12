@@ -1,44 +1,16 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import {
-  ShieldAlert, FolderGit2, SearchCode, FileText,
-  CheckCircle, AlertTriangle, XCircle, Loader, ArrowLeft,
-} from 'lucide-react'
+import { CheckCircle, Loader, ArrowLeft, XCircle } from 'lucide-react'
 import { startAnalysis, streamAnalysis, getToken } from '../services/api'
+import { STEP_ICONS, STEP_LABELS, STATUS_ICONS, STATUS_COLORS, ALL_STEPS } from '../constants/analysis'
 import Navbar from '../components/Navbar'
-
-const STEP_ICONS = {
-  secrets_detection: ShieldAlert,
-  gitignore_check: FolderGit2,
-  quality_check: SearchCode,
-  readme_check: FileText,
-}
-
-const STEP_LABELS = {
-  secrets_detection: 'Detection de secrets',
-  gitignore_check: 'Verification .gitignore',
-  quality_check: 'Qualite du code',
-  readme_check: 'README vs Code',
-}
-
-const STATUS_ICONS = {
-  clean: CheckCircle,
-  warning: AlertTriangle,
-  alert: XCircle,
-}
-
-const STATUS_COLORS = {
-  clean: '#2ecc71',
-  warning: '#e7a33e',
-  alert: '#e74c3c',
-}
 
 function AnalysisStream({ user, onLogout }) {
   const { owner, repo } = useParams()
   const navigate = useNavigate()
   const repoFullName = `${owner}/${repo}`
 
-  const [phase, setPhase] = useState('starting') // starting, streaming, done, error
+  const [phase, setPhase] = useState('starting')
   const [progress, setProgress] = useState([])
   const [results, setResults] = useState({})
   const [analysisId, setAnalysisId] = useState(null)
@@ -91,8 +63,6 @@ function AnalysisStream({ user, onLogout }) {
     }
   }
 
-  const allSteps = ['secrets_detection', 'gitignore_check', 'quality_check', 'readme_check']
-
   return (
     <div className="dash fade-in">
       <Navbar user={user} onLogout={onLogout} />
@@ -112,7 +82,6 @@ function AnalysisStream({ user, onLogout }) {
           </span>
         </div>
 
-        {/* Progress feed — disparait quand l'analyse est terminee */}
         {progress.length > 0 && phase !== 'done' && (
           <div className="progress-feed">
             {progress.map((p, i) => (
@@ -129,9 +98,8 @@ function AnalysisStream({ user, onLogout }) {
           </div>
         )}
 
-        {/* Results grid */}
         <div className="analysis-results-grid">
-          {allSteps.map(step => {
+          {ALL_STEPS.map(step => {
             const Icon = STEP_ICONS[step]
             const result = results[step]
             const isCompleted = !!result
@@ -197,7 +165,6 @@ function AnalysisStream({ user, onLogout }) {
           })}
         </div>
 
-        {/* Error */}
         {phase === 'error' && (
           <div className="analysis-error">
             <XCircle size={20} />
@@ -205,7 +172,6 @@ function AnalysisStream({ user, onLogout }) {
           </div>
         )}
 
-        {/* Done actions */}
         {phase === 'done' && analysisId && (
           <div className="analysis-done-actions">
             <button className="repo-action-btn primary" onClick={() => navigate(`/analysis/${analysisId}`)}>

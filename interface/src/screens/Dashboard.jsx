@@ -15,13 +15,9 @@ function Dashboard({ user, onLogout }) {
   const [search, setSearch] = useState('')
 
   useEffect(() => {
-    console.log('[Dashboard] Fetching /repos/...')
     apiFetch('/repos/')
-      .then(data => {
-        console.log('[Dashboard] /repos/ OK:', data.length, 'repos')
-        setRepos(data)
-      })
-      .catch(err => console.error('[Dashboard] /repos/ FAILED:', err.message))
+      .then(setRepos)
+      .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 

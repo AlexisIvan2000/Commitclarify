@@ -21,20 +21,17 @@ function History({ user, onLogout }) {
   const navigate = useNavigate()
 
   const loadHistory = useCallback(async () => {
-    console.log('[History] Fetching /analyze/history...')
     try {
       const data = await getAnalysisHistory()
-      console.log('[History] OK:', data.length, 'analyses')
       setAnalyses(data)
-    } catch (err) {
-      console.error('[History] FAILED:', err.message)
+    } catch {
+      // silencieux
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    console.log('[History] useEffect — token:', getToken() ? 'present' : 'absent')
     if (!getToken()) {
       navigate('/')
       return

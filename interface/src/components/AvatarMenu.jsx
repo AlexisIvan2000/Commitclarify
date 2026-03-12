@@ -1,21 +1,15 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { LogOut, Mail, Calendar, Zap, Trash2 } from 'lucide-react'
 import { getQuota, deleteAccount, clearTokens } from '../services/api'
+import useClickOutside from '../hooks/useClickOutside'
+import { useEffect } from 'react'
 
 function AvatarMenu({ user, onLogout }) {
   const [open, setOpen] = useState(false)
   const [quota, setQuota] = useState(null)
   const ref = useRef(null)
 
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  useClickOutside(ref, useCallback(() => setOpen(false), []))
 
   useEffect(() => {
     getQuota().then(setQuota).catch(() => {})

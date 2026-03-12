@@ -1,39 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import {
-  ShieldAlert, FolderGit2, SearchCode, FileText,
-  CheckCircle, AlertTriangle, XCircle, ArrowLeft,
-  FileDown, FileJson,
-} from 'lucide-react'
+import { CheckCircle, ArrowLeft, XCircle, FileDown, FileJson } from 'lucide-react'
 import { getAnalysisDetail, getToken, downloadExport, getExportPdfUrl, getExportJsonUrl } from '../services/api'
+import { STEP_ICONS, STEP_LABELS, STATUS_ICONS, STATUS_COLORS } from '../constants/analysis'
 import Navbar from '../components/Navbar'
 import Spinner from '../components/Spinner'
-
-const STEP_ICONS = {
-  secrets_detection: ShieldAlert,
-  gitignore_check: FolderGit2,
-  quality_check: SearchCode,
-  readme_check: FileText,
-}
-
-const STEP_LABELS = {
-  secrets_detection: 'Detection de secrets',
-  gitignore_check: 'Verification .gitignore',
-  quality_check: 'Qualite du code',
-  readme_check: 'README vs Code',
-}
-
-const STATUS_ICONS = {
-  clean: CheckCircle,
-  warning: AlertTriangle,
-  alert: XCircle,
-}
-
-const STATUS_COLORS = {
-  clean: '#2ecc71',
-  warning: '#e7a33e',
-  alert: '#e74c3c',
-}
 
 function AnalysisDetail({ user, onLogout }) {
   const { analysisId } = useParams()
@@ -111,7 +82,7 @@ function AnalysisDetail({ user, onLogout }) {
 
         <div className="analysis-results-grid">
           {analysis.results.map(result => {
-            const Icon = STEP_ICONS[result.aspect] || ShieldAlert
+            const Icon = STEP_ICONS[result.aspect] || CheckCircle
             const StatusIcon = STATUS_ICONS[result.status] || CheckCircle
 
             return (
