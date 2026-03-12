@@ -21,33 +21,40 @@ async def list_repos(request: Request, current_user: User = Depends(get_current_
 
     repos = []
     page = 1
-    async with httpx.AsyncClient() as client:
-        while page <= 10:
-            response = await client.get(
-                "https://api.github.com/user/repos",
-                headers={
-                    "Authorization": f"Bearer {github_token}",
-                    "Accept": "application/vnd.github+json",
-                },
-                params={"per_page": 100, "page": page},
-            )
-            if response.status_code == 401:
-                logger.warning("Token GitHub invalide pour user=%s", current_user.login)
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Token GitHub invalide ou expiré",
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            while page <= 10:
+                response = await client.get(
+                    "https://api.github.com/user/repos",
+                    headers={
+                        "Authorization": f"Bearer {github_token}",
+                        "Accept": "application/vnd.github+json",
+                    },
+                    params={"per_page": 100, "page": page},
                 )
-            if response.status_code != 200:
-                logger.error("Erreur GitHub API (status=%d) pour user=%s", response.status_code, current_user.login)
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="Erreur GitHub",
-                )
-            data = response.json()
-            if not data:
-                break
-            repos.extend(data)
-            page += 1
+                if response.status_code == 401:
+                    logger.warning("Token GitHub invalide pour user=%s", current_user.login)
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Token GitHub invalide ou expiré",
+                    )
+                if response.status_code != 200:
+                    logger.error("Erreur GitHub API (status=%d) pour user=%s", response.status_code, current_user.login)
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail="Erreur GitHub",
+                    )
+                data = response.json()
+                if not data:
+                    break
+                repos.extend(data)
+                page += 1
+    except httpx.TimeoutException:
+        logger.error("Timeout GitHub API pour user=%s", current_user.login)
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="GitHub ne repond pas, reessayez dans quelques instants",
+        )
 
     logger.info("Repos listés: %d repos pour user=%s", len(repos), current_user.login)
     return [
