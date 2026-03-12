@@ -53,7 +53,7 @@ async def revoke_refresh_token(raw_token: str, db: AsyncSession) -> bool:
     result = await db.execute(
         select(RefreshToken).where(
             RefreshToken.token_hash == token_hash,
-            RefreshToken.revoked_at == None
+            RefreshToken.revoked_at.is_(None)
         )
     )
     token = result.scalar_one_or_none()

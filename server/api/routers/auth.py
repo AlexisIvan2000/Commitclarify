@@ -1,18 +1,20 @@
+import hashlib
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete as sql_delete
 
 from core.config import GITHUB_CLIENT_ID, GITHUB_CALLBACK_URL, FRONTEND_URL
-
-logger = logging.getLogger(__name__)
 from core.database import get_db
 from core.rate_limit import limiter
 from api.dependencies import get_current_user
 from models.schemas import UserResponse, TokenResponse, RefreshTokenRequest
-from models.db_models import User
+from models.db_models import User, RefreshToken, Analysis, AnalysisResult
+
+logger = logging.getLogger(__name__)
 from services.authentication.auth import github_exchange_code, github_get_user, upsert_user
 from services.authentication.token import (
     create_access_token,
@@ -60,11 +62,6 @@ async def callback_github(request: Request, code: str, db: AsyncSession = Depend
 @limiter.limit("5/minute")
 async def refresh_token(request: Request, body: RefreshTokenRequest, db: AsyncSession = Depends(get_db)):
     """Rafraîchit l'access token via le refresh token."""
-    import hashlib
-    from sqlalchemy import select
-    from models.db_models import RefreshToken
-    from datetime import datetime
-
     token_hash = hashlib.sha256(body.refresh_token.encode()).hexdigest()
     result = await db.execute(
         select(RefreshToken).where(
@@ -113,9 +110,6 @@ async def delete_account(
     db: AsyncSession = Depends(get_db),
 ):
     """Supprime le compte utilisateur et toutes ses donnees (sauf analysis_log pour le rate limit)."""
-    from sqlalchemy import delete as sql_delete
-    from models.db_models import RefreshToken, Analysis, AnalysisResult
-
     # Récupérer les IDs des analyses de l'utilisateur
     result = await db.execute(
         select(Analysis.id).where(Analysis.user_id == current_user.id)

@@ -52,7 +52,7 @@ async def generate(prompt: str, max_tokens: int = 1024) -> str:
         except Exception as e:
             if "429" in str(e) and attempt < MAX_RETRIES:
                 wait = attempt * 15
-                logger.warning(f"Rate limit atteint, retry dans {wait}s (tentative {attempt}/{MAX_RETRIES})")
+                logger.warning("Rate limit atteint, retry dans %ds (tentative %d/%d)", wait, attempt, MAX_RETRIES)
                 await asyncio.sleep(wait)
             else:
                 raise
