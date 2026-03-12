@@ -2,21 +2,18 @@ import { useEffect, useState } from 'react'
 import { apiFetch, getToken, getRefreshToken, clearTokens } from '../services/api'
 
 export default function useAuth() {
+  const hasToken = !!getToken()
   const [user, setUser] = useState(null)
-  const [ready, setReady] = useState(false)
+  const [ready, setReady] = useState(!hasToken)
 
   useEffect(() => {
-    const token = getToken()
-    if (!token) {
-      setReady(true)
-      return
-    }
+    if (!hasToken) return
 
     apiFetch('/auth/me')
       .then(setUser)
       .catch(() => clearTokens())
       .finally(() => setReady(true))
-  }, [])
+  }, [hasToken])
 
   const handleLogout = async () => {
     try {
