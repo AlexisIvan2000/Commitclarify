@@ -1,7 +1,10 @@
 import asyncio
 import logging
+import os
 from functools import lru_cache
 from sentence_transformers import SentenceTransformer
+
+os.environ.setdefault("SENTENCE_TRANSFORMERS_HOME", "/data/models")
 
 logger = logging.getLogger(__name__)
 
