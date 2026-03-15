@@ -4,6 +4,8 @@ import { CheckCircle, Loader, ArrowLeft, XCircle } from 'lucide-react'
 import { startAnalysis, streamAnalysis, getToken } from '../services/api'
 import { STEP_ICONS, STEP_LABELS, STATUS_ICONS, STATUS_COLORS, ALL_STEPS } from '../constants/analysis'
 import Navbar from '../components/Navbar'
+import AnalysisStepper from '../components/AnalysisStepper'
+import CodeHighlight from '../components/CodeHighlight'
 
 function AnalysisStream({ user, onLogout }) {
   const { owner, repo } = useParams()
@@ -11,10 +13,12 @@ function AnalysisStream({ user, onLogout }) {
   const repoFullName = `${owner}/${repo}`
 
   const [phase, setPhase] = useState('starting')
-  const [progress, setProgress] = useState([])
+  const [currentStep, setCurrentStep] = useState('fetching')
+  const [stepMessages, setStepMessages] = useState({})
   const [results, setResults] = useState({})
   const [analysisId, setAnalysisId] = useState(null)
   const [error, setError] = useState(null)
+  const [stats, setStats] = useState(null)
   const started = useRef(false)
 
   useEffect(() => {
@@ -48,12 +52,19 @@ function AnalysisStream({ user, onLogout }) {
   function handleSSEEvent(event) {
     switch (event.event) {
       case 'progress':
-        setProgress(prev => [...prev, event])
+        if (event.step) {
+          setCurrentStep(event.step)
+          setStepMessages(prev => ({ ...prev, [event.step]: event.message }))
+        }
+        if (event.stats) {
+          setStats(event.stats)
+        }
         break
       case 'step_complete':
         setResults(prev => ({ ...prev, [event.step]: event.result }))
         break
       case 'done':
+        setCurrentStep('done')
         setPhase('done')
         break
       case 'error':
@@ -82,19 +93,16 @@ function AnalysisStream({ user, onLogout }) {
           </span>
         </div>
 
-        {progress.length > 0 && phase !== 'done' && (
-          <div className="progress-feed">
-            {progress.map((p, i) => (
-              <div key={i} className="progress-item">
-                <Loader size={14} className={phase === 'streaming' && i === progress.length - 1 ? 'spinning' : ''} />
-                <span>{p.message}</span>
-                {p.stats && (
-                  <span className="progress-stats">
-                    ({p.stats.fetched} fichiers, {p.stats.skipped} ignores)
-                  </span>
-                )}
-              </div>
-            ))}
+        <AnalysisStepper
+          currentStep={currentStep}
+          messages={stepMessages}
+          phase={phase}
+        />
+
+        {stats && (
+          <div className="progress-stats-bar">
+            <span>{stats.fetched} fichiers</span>
+            <span>{stats.skipped} ignores</span>
           </div>
         )}
 
@@ -133,7 +141,9 @@ function AnalysisStream({ user, onLogout }) {
                                 <>
                                   <span>{issue.title || issue.message || issue.description || JSON.stringify(issue)}</span>
                                   {issue.file_path && <span className="issue-file">{issue.file_path}</span>}
-                                  {issue.code_hint && <code className="issue-code-hint">{issue.code_hint}</code>}
+                                  {issue.code_hint && (
+                                    <CodeHighlight code={issue.code_hint} filePath={issue.file_path} />
+                                  )}
                                 </>
                               )}
                             </li>

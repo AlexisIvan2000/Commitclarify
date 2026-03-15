@@ -5,6 +5,7 @@ import { getAnalysisDetail, getToken, downloadExport, getExportPdfUrl, getExport
 import { STEP_ICONS, STEP_LABELS, STATUS_ICONS, STATUS_COLORS } from '../constants/analysis'
 import Navbar from '../components/Navbar'
 import Spinner from '../components/Spinner'
+import CodeHighlight from '../components/CodeHighlight'
 
 function AnalysisDetail({ user, onLogout }) {
   const { analysisId } = useParams()
@@ -104,7 +105,9 @@ function AnalysisDetail({ user, onLogout }) {
                               <>
                                 <span>{issue.title || issue.message || issue.description || JSON.stringify(issue)}</span>
                                 {issue.file_path && <span className="issue-file">{issue.file_path}</span>}
-                                {issue.code_hint && <code className="issue-code-hint">{issue.code_hint}</code>}
+                                {issue.code_hint && (
+                                    <CodeHighlight code={issue.code_hint} filePath={issue.file_path} />
+                                  )}
                               </>
                             )}
                           </li>

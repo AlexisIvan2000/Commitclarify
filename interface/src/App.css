@@ -232,14 +232,18 @@ html {
 
 .feature-card {
   padding: 1.3rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  transition: border-color 0.2s;
+  transition: border-color 0.25s, background 0.25s, transform 0.25s, box-shadow 0.25s;
 }
 
 .feature-card:hover {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
 .feature-card-header {
@@ -290,14 +294,18 @@ html {
   align-items: center;
   gap: 0.4rem;
   padding: 1.4rem 1rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  transition: border-color 0.2s;
+  transition: border-color 0.25s, background 0.25s, transform 0.25s, box-shadow 0.25s;
 }
 
 .step:hover {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
 .step-number {
@@ -631,17 +639,18 @@ html {
   flex-direction: column;
   gap: 0.6rem;
   padding: 1.2rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
 }
 
 .repo-card:hover {
-  border-color: rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.05);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  transform: translateY(-3px);
 }
 
 .repo-card-header {
@@ -764,8 +773,9 @@ html {
 
 .repo-action-btn.primary:hover {
   color: #fff;
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.25);
+  background: linear-gradient(135deg, rgba(218, 165, 32, 0.15), rgba(218, 165, 32, 0.05));
+  border-color: rgba(218, 165, 32, 0.4);
+  box-shadow: 0 0 20px rgba(218, 165, 32, 0.1);
 }
 
 .no-results {
@@ -806,11 +816,12 @@ html {
   top: calc(100% + 8px);
   right: 0;
   min-width: 260px;
-  background: #1a1a1a;
+  background: rgba(26, 26, 26, 0.9);
+  backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 0.75rem 0;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   z-index: 100;
   animation: dropdown-in 0.15s ease-out;
 }
@@ -1155,6 +1166,134 @@ html {
 
 /* ── Progress feed ── */
 
+/* ── Analysis Stepper ── */
+
+.analysis-stepper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  padding: 1.5rem 1.5rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  position: relative;
+}
+
+.stepper-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.stepper-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  color: #666;
+  transition: all 0.4s ease;
+  position: relative;
+}
+
+.stepper-step.active .stepper-icon {
+  background: rgba(218, 165, 32, 0.15);
+  border-color: rgba(218, 165, 32, 0.5);
+  color: #daa520;
+  box-shadow: 0 0 20px rgba(218, 165, 32, 0.2);
+  animation: stepperPulse 2s ease-in-out infinite;
+}
+
+.stepper-step.completed .stepper-icon {
+  background: rgba(46, 204, 113, 0.15);
+  border-color: rgba(46, 204, 113, 0.5);
+  color: #2ecc71;
+  box-shadow: 0 0 16px rgba(46, 204, 113, 0.15);
+}
+
+.stepper-step.error .stepper-icon {
+  background: rgba(231, 76, 60, 0.15);
+  border-color: rgba(231, 76, 60, 0.5);
+  color: #e74c3c;
+}
+
+@keyframes stepperPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(218, 165, 32, 0.2); }
+  50% { box-shadow: 0 0 30px rgba(218, 165, 32, 0.35); }
+}
+
+.stepper-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #666;
+  text-align: center;
+  transition: color 0.3s;
+}
+
+.stepper-step.active .stepper-label {
+  color: #daa520;
+}
+
+.stepper-step.completed .stepper-label {
+  color: #2ecc71;
+}
+
+.stepper-message {
+  font-size: 0.72rem;
+  color: #888;
+  text-align: center;
+  max-width: 120px;
+  line-height: 1.3;
+}
+
+.stepper-connector {
+  flex: 1;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  margin-top: 22px;
+  position: relative;
+  overflow: hidden;
+}
+
+.stepper-connector-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #2ecc71, #daa520);
+  transition: width 0.6s ease;
+  border-radius: 1px;
+}
+
+.stepper-connector.filled .stepper-connector-fill {
+  width: 100%;
+}
+
+.progress-stats-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.8rem;
+  color: #888;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.progress-stats-bar span {
+  padding: 0.25rem 0.6rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+}
+
+/* Legacy progress feed (hidden when stepper is active) */
 .progress-feed {
   display: flex;
   flex-direction: column;
@@ -1196,11 +1335,18 @@ html {
   display: flex;
   flex-direction: column;
   padding: 1.2rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
   animation: fadeIn 0.4s ease-out both;
+}
+
+.analysis-result-card:hover {
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
 }
 
 .analysis-result-card:nth-child(2) { animation-delay: 0.05s; }
@@ -1266,18 +1412,25 @@ html {
 .issue-file {
   font-size: 0.75rem;
   color: #888;
-  font-family: monospace;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .issue-code-hint {
-  font-size: 0.75rem;
-  background: rgba(0, 0, 0, 0.3);
-  color: #ccc;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-family: monospace;
+  font-size: 0.78rem;
+  background: rgba(0, 0, 0, 0.4);
+  color: #e0e0e0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
   white-space: pre-wrap;
   word-break: break-all;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  line-height: 1.6;
+  display: block;
+}
+
+.issue-code-hint code {
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .result-rec {
@@ -1336,15 +1489,18 @@ html {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.9rem 1.2rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
 }
 
 .history-item:hover {
-  border-color: rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
 .history-item-left {
@@ -1462,5 +1618,29 @@ html {
 
   .history-repo {
     color: #111;
+  }
+
+  .analysis-stepper {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.08);
+  }
+
+  .stepper-icon {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+
+  .stepper-connector {
+    background: rgba(0, 0, 0, 0.08);
+  }
+
+  .issue-code-hint {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.08);
+    color: #333;
+  }
+
+  .progress-stats-bar span {
+    background: rgba(0, 0, 0, 0.04);
   }
 }
