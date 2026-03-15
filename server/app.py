@@ -55,6 +55,11 @@ app.add_middleware(
 
 app.add_middleware(JWTMiddleware)
 
+@app.get("/")
+async def health_check():
+    return {"status": "ok", "service": "CommitClarify"}
+
+
 app.include_router(auth.router)
 app.include_router(repos.router)
 app.include_router(analysis.router)
