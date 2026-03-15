@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 # Point d'entrée unique pour lancer toutes les analyses AI en parallèle
 async def run_analysis(collection_name: str, readme_chunks: list[dict], has_gitignore: bool, files: list[dict] = None) -> dict:
     secrets, gitignore, quality, readme = await asyncio.gather(
-        run_secrets_detection(collection_name),
+        run_secrets_detection(collection_name, files or []),
         run_gitignore_check(collection_name, has_gitignore),
         run_quality_check(collection_name, files or []),
         run_readme_check(collection_name, readme_chunks),

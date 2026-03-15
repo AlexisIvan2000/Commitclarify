@@ -22,19 +22,36 @@ def format_chunks(chunks: list[dict]) -> str:
     ])
 
 
+REQUIRED_ISSUE_FIELDS = {"severity", "title", "file_path", "description"}
+
+
 def parse_response(raw: str) -> dict:
-    """Parse la réponse JSON du LLM avec fallback."""
+    """Parse la reponse JSON du LLM, valide le schema, filtre les issues incompletes."""
     clean = re.sub(r"```json|```", "", raw).strip()
     try:
-        return json.loads(clean)
+        result = json.loads(clean)
     except json.JSONDecodeError:
         logger.warning("Impossible de parser la reponse LLM: %s", clean[:200])
         return {
-            "status": "clean",
+            "status": "error",
             "issues": [],
             "recommendations": [],
-            "error": "Impossible de parser la réponse",
+            "error": "Reponse LLM invalide (JSON malformed)",
         }
+
+    # Validation de schema — filtrer les issues avec des champs manquants
+    raw_issues = result.get("issues", [])
+    valid_issues = []
+    for issue in raw_issues:
+        missing = REQUIRED_ISSUE_FIELDS - set(issue.keys())
+        if missing:
+            logger.warning("Issue LLM filtree (champs manquants: %s): %s",
+                           ", ".join(missing), issue.get("title", "?"))
+            continue
+        valid_issues.append(issue)
+
+    result["issues"] = valid_issues
+    return result
 
 # Appel au LLM avec retry automatique sur les erreurs de rate limit.
 async def generate(prompt: str, max_tokens: int = 1024) -> str:

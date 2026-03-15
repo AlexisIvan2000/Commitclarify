@@ -216,7 +216,7 @@ async def _analysis_generator(
         yield sse_event({"event": "progress", "step": "analyzing", "message": "Analyse IA en cours..."})
 
         tasks = [
-            asyncio.create_task(_run_and_yield("secrets_detection", run_secrets_detection(collection_name))),
+            asyncio.create_task(_run_and_yield("secrets_detection", run_secrets_detection(collection_name, files))),
             asyncio.create_task(_run_and_yield("gitignore_check", run_gitignore_check(collection_name, has_gitignore))),
             asyncio.create_task(_run_and_yield("quality_check", run_quality_check(collection_name, files if not cached else []))),
             asyncio.create_task(_run_and_yield("readme_check", run_readme_check(collection_name, readme_chunks))),

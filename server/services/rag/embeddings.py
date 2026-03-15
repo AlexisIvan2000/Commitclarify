@@ -16,7 +16,7 @@ def _get_model() -> SentenceTransformer:
     global _model
     if _model is None:
         logger.info("Chargement du modele d'embeddings...")
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
+        _model = SentenceTransformer("all-mpnet-base-v2")
         logger.info("Modele d'embeddings charge")
     return _model
 

@@ -3,6 +3,7 @@ import logging
 
 from services.ai.llm import format_chunks, parse_response, generate
 from services.ai.ruff_runner import run_ruff_on_files
+from services.ai.eslint_runner import run_eslint_on_files
 from services.rag.embeddings import get_embedding
 from services.rag.indexer import retrieve_chunks
 
@@ -13,15 +14,19 @@ async def run_quality_check(collection_name: str, files: list[dict]) -> dict:
     """Detecte les problemes de qualite via Ruff (factuel) + LLM (complement)."""
     logger.info("Quality check demarree (collection=%s, %d fichiers)", collection_name, len(files))
 
-    # Embedding + Ruff en parallele
+    # Embedding + Ruff + ESLint en parallele
     query = "function class method definition implementation logic duplicate"
     embedding_task = get_embedding(query)
     ruff_task = run_ruff_on_files(files)
+    eslint_task = run_eslint_on_files(files)
 
-    embedding, ruff_issues = await asyncio.gather(embedding_task, ruff_task)
-    logger.info(f"Ruff: {len(ruff_issues)} issues detectees")
+    embedding, ruff_issues, eslint_issues = await asyncio.gather(
+        embedding_task, ruff_task, eslint_task
+    )
+    linter_issues = ruff_issues + eslint_issues
+    logger.info("Linters: %d ruff + %d eslint issues", len(ruff_issues), len(eslint_issues))
 
-    chunks = retrieve_chunks(collection_name, query, embedding, n_results=10)
+    chunks = retrieve_chunks(collection_name, query, embedding, n_results=20)
     context = format_chunks(chunks)
 
     prompt = f"""Tu es un expert en qualite logicielle strict et precis.
@@ -31,7 +36,7 @@ Analyse ces extraits de code et detecte UNIQUEMENT :
 - Logique morte ou code inatteignable
 
 REGLES STRICTES :
-- NE SIGNALE PAS les imports inutilises, bare except, fonctions longues, trop de parametres — c'est deja couvert par un linter
+- NE SIGNALE PAS les imports inutilises, bare except, fonctions longues, trop de parametres, variables inutilisees, == vs === — c'est deja couvert par les linters (Ruff/ESLint)
 - Chaque issue DOIT citer le fichier exact ("file_path") ET un extrait du code concerne dans "code_hint" (copiable pour Ctrl+F)
 - NE SIGNALE PAS les choix d'architecture ou de design
 - NE SIGNALE PAS les fichiers de config ou de test
@@ -64,7 +69,7 @@ FORMAT :
         issue["source"] = "llm"
 
     # --- Merge ---
-    all_issues = ruff_issues + llm_issues
+    all_issues = linter_issues + llm_issues
     status = "issues_found" if all_issues else "clean"
 
     recommendations = []
@@ -73,8 +78,14 @@ FORMAT :
             "priority": "medium",
             "message": f"Ruff a detecte {len(ruff_issues)} probleme(s) — corrigez-les avec : ruff check --fix"
         })
+    if eslint_issues:
+        recommendations.append({
+            "priority": "medium",
+            "message": f"ESLint a detecte {len(eslint_issues)} probleme(s) — corrigez-les avec : npx eslint --fix"
+        })
 
-    logger.info("Quality check terminee: %d ruff + %d llm = %d issues", len(ruff_issues), len(llm_issues), len(all_issues))
+    logger.info("Quality check terminee: %d ruff + %d eslint + %d llm = %d issues",
+                len(ruff_issues), len(eslint_issues), len(llm_issues), len(all_issues))
     return {
         "status": status,
         "issues": all_issues,
@@ -98,7 +109,7 @@ async def run_readme_check(
 
     query = "endpoint route function feature implementation"
     embedding = await get_embedding(query)
-    chunks = retrieve_chunks(collection_name, query, embedding, n_results=10)
+    chunks = retrieve_chunks(collection_name, query, embedding, n_results=8)
 
     readme_text = "\n\n".join([c["content"] for c in readme_chunks])
     code_context = format_chunks(chunks)
