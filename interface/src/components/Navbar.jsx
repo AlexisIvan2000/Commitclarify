@@ -18,13 +18,13 @@ function Navbar({ user, onLogout }) {
             className={`navbar-link ${location.pathname === '/dashboard' ? 'active' : ''}`}
             onClick={() => navigate('/dashboard')}
           >
-            <GitFork size={16} /> Repos
+            <GitFork size={16} /> <span className="navbar-link-text">Repos</span>
           </button>
           <button
             className={`navbar-link ${location.pathname === '/history' ? 'active' : ''}`}
             onClick={() => navigate('/history')}
           >
-            <History size={16} /> Historique
+            <History size={16} /> <span className="navbar-link-text">Historique</span>
           </button>
         </div>
         {user && <AvatarMenu user={user} onLogout={onLogout} />}

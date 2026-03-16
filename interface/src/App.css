@@ -390,7 +390,7 @@ html {
     gap: 0.25rem;
   }
 
-  .navbar-link span {
+  .navbar-link-text {
     display: none;
   }
 
