@@ -28,9 +28,8 @@ ESLINT_RULES = {
     "prefer-const": "Utiliser const quand la variable n'est pas reassignee",
 }
 
-
+# Cree un fichier de config ESLint flat dans le dossier temporaire.
 def _build_eslint_config(tmp_dir: str) -> str:
-    """Cree un fichier de config ESLint flat dans le dossier temporaire."""
     rules = {}
     for rule in ESLINT_RULES:
         rules[rule] = "error"
@@ -46,9 +45,8 @@ def _build_eslint_config(tmp_dir: str) -> str:
     config_path.write_text(config_content, encoding="utf-8")
     return str(config_path)
 
-
+# Ecrit les fichiers JS/TS dans un dossier temp, lance ESLint, retourne les issues.
 async def run_eslint_on_files(files: list[dict]) -> list[dict]:
-    """Ecrit les fichiers JS/TS dans un dossier temp, lance ESLint, retourne les issues."""
     js_files = [
         f for f in files
         if Path(f["path"]).suffix.lower() in JS_EXTENSIONS
@@ -71,16 +69,20 @@ async def run_eslint_on_files(files: list[dict]) -> list[dict]:
 
         _build_eslint_config(tmp_dir)
 
-        proc = await asyncio.create_subprocess_exec(
-            "npx", "eslint",
-            "--format", "json",
-            "--no-eslintrc",
-            "--config", str(Path(tmp_dir) / "eslint.config.mjs"),
-            *[str(Path(tmp_dir) / f["path"]) for f in js_files],
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, _ = await proc.communicate()
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "npx", "eslint",
+                "--format", "json",
+                "--no-eslintrc",
+                "--config", str(Path(tmp_dir) / "eslint.config.mjs"),
+                *[str(Path(tmp_dir) / f["path"]) for f in js_files],
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, _ = await proc.communicate()
+        except FileNotFoundError:
+            logger.warning("ESLint: npx non disponible — skip")
+            return []
 
         if not stdout.strip():
             return []
@@ -119,9 +121,8 @@ async def run_eslint_on_files(files: list[dict]) -> list[dict]:
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
-
+# Extrait une ligne specifique d'un fichier
 def _extract_line(file_path: str, line_number: int) -> str:
-    """Extrait une ligne specifique d'un fichier."""
     try:
         with open(file_path, encoding="utf-8") as f:
             for i, line in enumerate(f, 1):

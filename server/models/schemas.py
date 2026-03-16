@@ -23,7 +23,7 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
-# ── Analysis schemas ─────────────────────────────────────────────────────────
+# Analysis schemas
 
 class AnalysisResultResponse(BaseModel):
     id: uuid.UUID
