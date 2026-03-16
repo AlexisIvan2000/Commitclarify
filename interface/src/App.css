@@ -267,9 +267,140 @@ html {
   line-height: 1.5;
 }
 
-@media (max-width: 550px) {
+@media (max-width: 768px) {
+  #root {
+    padding: 1rem;
+  }
+
   .features-grid {
     grid-template-columns: 1fr;
+  }
+
+  .home-title {
+    font-size: 2rem;
+  }
+
+  .tagline {
+    font-size: 1rem;
+    padding: 0 1rem;
+  }
+
+  .features {
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0 1rem;
+  }
+
+  .home-hero {
+    padding: 5rem 1rem 2rem;
+  }
+
+  .home-navbar-inner,
+  .navbar-inner {
+    padding: 0.6rem 1rem;
+  }
+
+  .home-navbar-links {
+    gap: 1rem;
+  }
+
+  /* Dashboard */
+  .dash {
+    padding-top: 3.5rem;
+  }
+
+  .dash-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .repo-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    flex-wrap: wrap;
+  }
+
+  .repo-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Analysis */
+  .analysis-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .analysis-results-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-stepper {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem;
+  }
+
+  .stepper-connector {
+    display: none;
+  }
+
+  .stepper-step {
+    flex: 0 0 calc(50% - 0.5rem);
+  }
+
+  .stepper-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .progress-stats-bar {
+    flex-wrap: wrap;
+  }
+
+  .analysis-done-actions {
+    flex-direction: column;
+  }
+
+  .export-actions {
+    flex-wrap: wrap;
+  }
+
+  /* History */
+  .history-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .history-item-actions {
+    width: 100%;
+  }
+
+  .history-item-actions .repo-action-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* Navbar */
+  .navbar-links {
+    gap: 0.25rem;
+  }
+
+  .navbar-link span {
+    display: none;
+  }
+
+  .navbar-title {
+    font-size: 1rem;
+  }
+
+  /* 404 */
+  .not-found-code {
+    font-size: 4rem;
   }
 }
 
@@ -338,6 +469,46 @@ html {
 @media (max-width: 500px) {
   .steps {
     grid-template-columns: 1fr;
+  }
+
+  .home-logo {
+    width: 80px;
+    height: 80px;
+  }
+
+  .home-title {
+    font-size: 1.6rem;
+  }
+
+  .github-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .filter-tabs {
+    width: 100%;
+  }
+
+  .filter-tab {
+    flex: 1;
+    text-align: center;
+  }
+
+  .filter-search {
+    width: 100%;
+  }
+
+  .filter-search input {
+    width: 100%;
+  }
+
+  .stepper-step {
+    flex: 0 0 calc(50% - 0.5rem);
+  }
+
+  .dropdown {
+    min-width: 220px;
+    right: -1rem;
   }
 }
 
