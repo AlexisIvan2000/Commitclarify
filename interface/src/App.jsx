@@ -7,6 +7,7 @@ import AnalysisDetail from './screens/AnalysisDetail'
 import History from './screens/History'
 import Privacy from './screens/Privacy'
 import Terms from './screens/Terms'
+import NotFound from './screens/NotFound'
 import Spinner from './components/Spinner'
 import useAuth from './hooks/useAuth'
 import './App.css'
@@ -35,6 +36,7 @@ function App() {
         } />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   )
