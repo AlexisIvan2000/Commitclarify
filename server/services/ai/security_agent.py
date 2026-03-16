@@ -16,12 +16,16 @@ SECRET_PATTERNS = [
     ("Token Slack expose",          r"xox[bp]-[a-zA-Z0-9-]+",                   "critical"),
     ("Cle SendGrid exposee",        r"SG\.[a-zA-Z0-9]{22,}",                    "critical"),
     ("Cle privee dans le code",     r"-----BEGIN[A-Z ]*PRIVATE KEY-----",       "critical"),
-    ("String de connexion exposee", r"://[^:\s]+:[^@\s]+@[^/\s]+",             "high"),
+    ("String de connexion exposee", r"(postgresql|postgres|mysql|mongodb|redis|amqp|ftp|ssh)(\+\w+)?://[^:\s]+:[^@\s]+@[^/\s]+", "high"),
 ]
 
 # Fichiers et lignes a exclure pour eviter les faux positifs
 EXCLUDED_FILES = {".env.example", ".env.sample", ".env.template"}
-EXCLUDED_LINE_PATTERNS = re.compile(r"placeholder|your_|example|changeme|xxx|TODO", re.IGNORECASE)
+EXCLUDED_FILE_PATTERNS = re.compile(r"test_|_test\.|\.test\.|spec\.|security_agent\.py$", re.IGNORECASE)
+EXCLUDED_LINE_PATTERNS = re.compile(
+    r'placeholder|your_|changeme|xxx|TODO|mock|fake|dummy|fixture',
+    re.IGNORECASE,
+)
 
 
 def _scan_secrets_regex(files: list[dict]) -> list[dict]:
@@ -34,8 +38,11 @@ def _scan_secrets_regex(files: list[dict]) -> list[dict]:
         if not content:
             continue
 
-        # Exclure les fichiers template
-        if Path(path).name in EXCLUDED_FILES:
+        # Exclure les fichiers template et de test
+        filename = Path(path).name
+        if filename in EXCLUDED_FILES:
+            continue
+        if EXCLUDED_FILE_PATTERNS.search(filename):
             continue
 
         for line_num, line in enumerate(content.splitlines(), 1):
