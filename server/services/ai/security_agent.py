@@ -92,8 +92,11 @@ REGLES STRICTES :
 - NE SIGNALE PAS les variables qui chargent depuis os.environ, os.getenv, process.env, dotenv
 - NE SIGNALE PAS les placeholders (ex: "your-api-key-here", "xxx", "changeme")
 - NE SIGNALE PAS les cles de test evidentes (ex: "test-secret-key", "secret" dans un fichier de test)
+- NE SIGNALE PAS les fichiers de test (test_, _test, spec., fixtures, mocks) — les fausses cles dans les tests sont intentionnelles
+- NE SIGNALE PAS les definitions de regex ou patterns de detection (ex: r"AKIA...", r"sk-...")
 - NE SIGNALE PAS les URLs publiques d'API
 - NE SUPPOSE RIEN qui n'est pas dans le code fourni
+- Le "file_path" DOIT etre exactement celui indique dans les extraits fournis — ne jamais inventer un chemin
 - Chaque issue DOIT citer un extrait exact du code comme preuve dans "code_hint" (copiable pour Ctrl+F)
 - Si tu n'es pas certain a 90%+, NE SIGNALE PAS
 
