@@ -164,6 +164,7 @@ async def _analysis_generator(
             collection_name = build_collection_name(str(analysis.user_id), analysis.repo_name, repo_sha)
             readme_chunks = []
             has_gitignore = False
+            files = []
         else:
             # Étape 3 : Fetch des fichiers
             repo_data = await fetch_repo_files(owner, repo, github_token)
