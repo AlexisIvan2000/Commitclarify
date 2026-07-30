@@ -9,9 +9,10 @@ from slowapi.errors import RateLimitExceeded
 from api.middlewares.jwt_middleware import JWTMiddleware
 from api.routers import analysis, auth, repos
 from core.config import FRONTEND_URL, missing_settings
-from core.database import Base, engine
+from core.database import engine
 from core.exceptions import register_exception_handlers
 from core.rate_limit import limiter
+from core.schema import upgrade_schema
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,9 +36,7 @@ async def lifespan(app: FastAPI):
             "Variables d'environnement manquantes : " + ", ".join(absent)
         )
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Base de donnees initialisee")
+    await upgrade_schema()
 
     yield
 

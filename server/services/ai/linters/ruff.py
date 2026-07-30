@@ -2,6 +2,7 @@ import json
 import logging
 from pathlib import Path
 
+from core.language import DEFAULT_LANGUAGE, text
 from services.ai.linters.base import (
     MAX_ISSUES_PER_LINTER,
     extract_line,
@@ -15,18 +16,18 @@ logger = logging.getLogger(__name__)
 PYTHON_EXTENSIONS = {".py", ".pyw", ".pyi"}
 
 RULES = {
-    "F401": ("Import inutilise", "low"),
-    "F841": ("Variable assignee mais jamais utilisee", "low"),
-    "E501": ("Ligne trop longue", "low"),
-    "E722": ("Bare except (except sans type)", "medium"),
-    "B006": ("Argument par defaut mutable", "medium"),
-    "C901": ("Fonction trop complexe", "high"),
-    "PLR0913": ("Trop de parametres", "medium"),
-    "PLR0915": ("Trop de statements dans la fonction", "medium"),
+    "F401": "low",
+    "F841": "low",
+    "E501": "low",
+    "E722": "medium",
+    "B006": "medium",
+    "C901": "high",
+    "PLR0913": "medium",
+    "PLR0915": "medium",
 }
 
 
-async def run_ruff_on_files(files: list[dict]) -> list[dict]:
+async def run_ruff_on_files(files: list[dict], language: str = DEFAULT_LANGUAGE) -> list[dict]:
     python_files = select_files(files, PYTHON_EXTENSIONS)
     if not python_files:
         logger.info("Ruff: aucun fichier Python a analyser")
@@ -62,13 +63,15 @@ async def run_ruff_on_files(files: list[dict]) -> list[dict]:
             code = r.get("code", "")
             line = r.get("location", {}).get("row", "?")
             message = r.get("message", "")
-            label, severity = RULES.get(code, (message, "low"))
+            severity = RULES.get(code, "low")
+            label = text(f"rule.{code}", language) if code in RULES else message
 
             issues.append({
                 "severity": severity,
                 "title": label,
+                "rule": code,
                 "file_path": path_map.get(abs_path, r.get("filename", "")),
-                "description": f"Ligne {line} : {message}",
+                "description": text("issue.at_line", language, line=line, message=message),
                 "code_hint": extract_line(abs_path, line),
                 "source": "ruff",
             })

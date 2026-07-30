@@ -46,6 +46,7 @@ class AnalysisResponse(BaseModel):
     repo_name: str
     repo_sha: str | None
     status: str
+    language: str
     created_at: datetime
     completed_at: datetime | None
 

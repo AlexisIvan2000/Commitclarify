@@ -5,8 +5,9 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
+from core.language import normalize, text
 from models.db_models import Analysis
-from services.export.serializers import ASPECT_LABELS, STATUS_LABELS
+from services.export.serializers import aspect_label, status_label
 
 SEVERITY_COLORS = {
     "critical": (0.91, 0.30, 0.24),
@@ -18,11 +19,11 @@ SEVERITY_COLORS = {
 GREY = (0.4, 0.4, 0.4)
 BLACK = (0, 0, 0)
 MARGIN = 20 * mm
-FOOTER = "Genere par CommitClarify"
 
 
 class _Report:
-    def __init__(self):
+    def __init__(self, footer: str):
+        self.footer = footer
         self.buffer = BytesIO()
         self.canvas = canvas.Canvas(self.buffer, pagesize=A4)
         self.width, self.height = A4
@@ -60,7 +61,7 @@ class _Report:
     def _draw_footer(self) -> None:
         self.canvas.setFont("Helvetica", 8)
         self.canvas.setFillColorRGB(0.5, 0.5, 0.5)
-        self.canvas.drawString(MARGIN, 10 * mm, FOOTER)
+        self.canvas.drawString(MARGIN, 10 * mm, self.footer)
         self.canvas.setFillColorRGB(*BLACK)
 
     def build(self) -> bytes:
@@ -70,37 +71,51 @@ class _Report:
 
 
 def generate_pdf(analysis: Analysis) -> bytes:
-    report = _Report()
+    language = normalize(getattr(analysis, "language", None))
+    report = _Report(text("pdf.footer", language))
 
-    report.text("CommitClarify — Rapport d'analyse", font="Helvetica-Bold", size=18, leading=10 * mm)
-    report.text(f"Repository : {analysis.repo_name}", size=11, leading=6 * mm)
-    report.text(f"Date : {analysis.created_at.strftime('%d/%m/%Y %H:%M')}", size=11, leading=6 * mm)
+    report.text(text("pdf.title", language), font="Helvetica-Bold", size=18, leading=10 * mm)
+    report.text(
+        text("pdf.repository", language, value=analysis.repo_name), size=11, leading=6 * mm,
+    )
+    report.text(
+        text("pdf.date", language, value=analysis.created_at.strftime('%d/%m/%Y %H:%M')),
+        size=11,
+        leading=6 * mm,
+    )
     if analysis.repo_sha:
-        report.text(f"SHA : {analysis.repo_sha[:12]}", size=11, leading=6 * mm)
+        report.text(
+            text("pdf.sha", language, value=analysis.repo_sha[:12]), size=11, leading=6 * mm,
+        )
     report.space(8 * mm)
 
     for result in analysis.results:
         report.ensure_space(40)
 
         report.text(
-            ASPECT_LABELS.get(result.aspect, result.aspect),
+            aspect_label(result.aspect, language),
             font="Helvetica-Bold",
             size=13,
             leading=6 * mm,
         )
         report.text(
-            f"Statut : {STATUS_LABELS.get(result.status, result.status)}",
+            text("pdf.status", language, value=status_label(result.status, language)),
             indent=5 * mm,
             leading=6 * mm,
         )
 
         for issue in result.issues or []:
-            _draw_issue(report, issue)
+            _draw_issue(report, issue, language)
 
         recommendations = result.recommendations or []
         if recommendations:
             report.ensure_space(15)
-            report.text("Recommandations :", font="Helvetica-Bold", leading=5 * mm, indent=5 * mm)
+            report.text(
+                text("pdf.recommendations", language),
+                font="Helvetica-Bold",
+                leading=5 * mm,
+                indent=5 * mm,
+            )
             for rec in recommendations:
                 message = rec.get("message", rec.get("description", str(rec)))
                 report.text(
@@ -116,7 +131,7 @@ def generate_pdf(analysis: Analysis) -> bytes:
     return report.build()
 
 
-def _draw_issue(report: _Report, issue: dict) -> None:
+def _draw_issue(report: _Report, issue: dict, language: str) -> None:
     report.ensure_space(25)
 
     title = issue.get("title", issue.get("message", issue.get("description", str(issue))))
@@ -133,7 +148,7 @@ def _draw_issue(report: _Report, issue: dict) -> None:
 
     if issue.get("file_path"):
         report.text(
-            f"Fichier : {issue['file_path']}",
+            text("pdf.file", language, value=issue['file_path']),
             size=9,
             indent=10 * mm,
             color=GREY,

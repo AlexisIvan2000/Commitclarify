@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+from core.language import DEFAULT_LANGUAGE, PROMPT_OUTPUT_RULE, normalize, text
 from services.ai.linters import run_eslint_on_files, run_ruff_on_files
 from services.ai.llm import format_chunks, parse_response, generate
 from services.rag.embeddings import get_embedding
@@ -9,13 +10,21 @@ from services.rag.indexer import retrieve_chunks
 logger = logging.getLogger(__name__)
 
 
-async def run_quality_check(collection_name: str, files: list[dict]) -> dict:
-    logger.info("Quality check demarree (collection=%s, %d fichiers)", collection_name, len(files))
+async def run_quality_check(
+    collection_name: str,
+    files: list[dict],
+    language: str = DEFAULT_LANGUAGE,
+) -> dict:
+    language = normalize(language)
+    logger.info(
+        "Quality check demarree (collection=%s, %d fichiers, langue=%s)",
+        collection_name, len(files), language,
+    )
 
     query = "function class method definition implementation logic duplicate"
     embedding_task = get_embedding(query)
-    ruff_task = run_ruff_on_files(files)
-    eslint_task = run_eslint_on_files(files)
+    ruff_task = run_ruff_on_files(files, language)
+    eslint_task = run_eslint_on_files(files, language)
 
     embedding, ruff_issues, eslint_issues = await asyncio.gather(
         embedding_task, ruff_task, eslint_task
@@ -43,7 +52,7 @@ REGLES STRICTES :
 
 {context}
 
-Reponds UNIQUEMENT en JSON valide, sans balises markdown. Tout le contenu (titres, descriptions, recommandations) DOIT etre en francais.
+{PROMPT_OUTPUT_RULE[language]}
 Si aucun probleme reel : "issues" = [].
 
 FORMAT :
@@ -72,12 +81,12 @@ FORMAT :
     if ruff_issues:
         recommendations.append({
             "priority": "medium",
-            "message": f"Ruff a detecte {len(ruff_issues)} probleme(s) — corrigez-les avec : ruff check --fix"
+            "message": text("recommendation.ruff", language, count=len(ruff_issues)),
         })
     if eslint_issues:
         recommendations.append({
             "priority": "medium",
-            "message": f"ESLint a detecte {len(eslint_issues)} probleme(s) — corrigez-les avec : npx eslint --fix"
+            "message": text("recommendation.eslint", language, count=len(eslint_issues)),
         })
 
     logger.info("Quality check terminee: %d ruff + %d eslint + %d llm = %d issues",
@@ -92,14 +101,20 @@ FORMAT :
 async def run_readme_check(
     collection_name: str,
     readme_chunks: list[dict],
+    language: str = DEFAULT_LANGUAGE,
 ) -> dict:
-    logger.info("README check demarree (collection=%s, %d chunks readme)", collection_name, len(readme_chunks))
+    language = normalize(language)
+    logger.info(
+        "README check demarree (collection=%s, %d chunks readme, langue=%s)",
+        collection_name, len(readme_chunks), language,
+    )
+
     if not readme_chunks:
         return {
             "status": "unavailable",
             "issues": [],
             "recommendations": [],
-            "message": "Analyse README vs Code non disponible — aucun README.md detecte dans ce repository."
+            "message": text("recommendation.no_readme", language),
         }
 
     query = "endpoint route function feature implementation"
@@ -128,7 +143,7 @@ REGLES STRICTES :
 - NE SUPPOSE PAS — base-toi uniquement sur ce qui est ecrit
 - Si le README est globalement correct, reponds "clean"
 
-Reponds UNIQUEMENT en JSON valide, sans balises markdown. Tout le contenu (titres, descriptions, recommandations) DOIT etre en francais.
+{PROMPT_OUTPUT_RULE[language]}
 Si tout est coherent : "status" = "clean" et "issues" = [].
 
 FORMAT :

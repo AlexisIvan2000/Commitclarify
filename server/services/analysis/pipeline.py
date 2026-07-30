@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.clock import utcnow
 from core.exceptions import ConflictError
+from core.language import normalize, text
 from models.db_models import Analysis, AnalysisResult
 from services.ai.consistency_agent import run_quality_check, run_readme_check
 from services.ai.security_agent import run_gitignore_check, run_secrets_detection
@@ -38,10 +39,11 @@ def assert_runnable(analysis: Analysis) -> None:
         return
 
     if analysis.status == "processing":
-        raise ConflictError("Cette analyse est deja en cours.")
+        raise ConflictError("Cette analyse est deja en cours.", code="analysis_running")
 
     raise ConflictError(
-        "Cette analyse est deja terminee. Consultez son resultat ou lancez une nouvelle analyse."
+        "Cette analyse est deja terminee. Consultez son resultat ou lancez une nouvelle analyse.",
+        code="analysis_finished",
     )
 
 
@@ -52,13 +54,20 @@ async def run(
 ) -> AsyncIterator[str]:
     owner, repo = analysis.repo_name.split("/")
     analysis_id = str(analysis.id)
+    language = normalize(analysis.language)
 
     try:
         analysis.status = "processing"
         await db.commit()
-        logger.info("Analyse %s demarree pour %s", analysis_id, analysis.repo_name)
+        logger.info(
+            "Analyse %s demarree pour %s (langue=%s)", analysis_id, analysis.repo_name, language,
+        )
 
-        yield sse_event({"event": "progress", "step": "fetching", "message": "Récupération des fichiers..."})
+        yield sse_event({
+            "event": "progress",
+            "step": "fetching",
+            "message": text("progress.fetching", language),
+        })
 
         repo_data = await fetch_repo_files(owner, repo, github_token)
         repo_sha = repo_data["sha"]
@@ -67,7 +76,7 @@ async def run(
         yield sse_event({
             "event": "progress",
             "step": "fetching",
-            "message": f"{repo_data['stats']['fetched']} fichiers récupérés",
+            "message": text("progress.fetched", language, count=repo_data["stats"]["fetched"]),
             "truncated": repo_data["truncated"],
             "stats": repo_data["stats"],
         })
@@ -76,7 +85,10 @@ async def run(
             logger.warning("Analyse %s: aucun fichier analysable", analysis_id)
             analysis.status = "failed"
             await db.commit()
-            yield sse_event({"event": "error", "message": "Aucun fichier analysable trouvé."})
+            yield sse_event({
+                "event": "error",
+                "message": text("progress.no_files", language),
+            })
             return
 
         has_gitignore = any(Path(f["path"]).name == ".gitignore" for f in files)
@@ -89,10 +101,14 @@ async def run(
             yield sse_event({
                 "event": "progress",
                 "step": "indexing",
-                "message": "Index vectoriel déjà en cache",
+                "message": text("progress.index_cached", language),
             })
         else:
-            yield sse_event({"event": "progress", "step": "indexing", "message": "Indexation en cours..."})
+            yield sse_event({
+                "event": "progress",
+                "step": "indexing",
+                "message": text("progress.indexing", language),
+            })
 
             index_result = await index_chunks(
                 user_id=str(analysis.user_id),
@@ -105,16 +121,30 @@ async def run(
             yield sse_event({
                 "event": "progress",
                 "step": "indexing",
-                "message": f"{index_result['chunks_indexed']} chunks indexés",
+                "message": text(
+                    "progress.indexed", language, count=index_result["chunks_indexed"],
+                ),
             })
 
-        yield sse_event({"event": "progress", "step": "analyzing", "message": "Analyse IA en cours..."})
+        yield sse_event({
+            "event": "progress",
+            "step": "analyzing",
+            "message": text("progress.analyzing", language),
+        })
 
         tasks = [
-            asyncio.create_task(_labelled("secrets_detection", run_secrets_detection(collection_name, files))),
-            asyncio.create_task(_labelled("gitignore_check", run_gitignore_check(collection_name, has_gitignore))),
-            asyncio.create_task(_labelled("quality_check", run_quality_check(collection_name, files))),
-            asyncio.create_task(_labelled("readme_check", run_readme_check(collection_name, readme_chunks))),
+            asyncio.create_task(_labelled(
+                "secrets_detection", run_secrets_detection(collection_name, files, language),
+            )),
+            asyncio.create_task(_labelled(
+                "gitignore_check", run_gitignore_check(collection_name, has_gitignore, language),
+            )),
+            asyncio.create_task(_labelled(
+                "quality_check", run_quality_check(collection_name, files, language),
+            )),
+            asyncio.create_task(_labelled(
+                "readme_check", run_readme_check(collection_name, readme_chunks, language),
+            )),
         ]
 
         results = {}

@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from api.dependencies import get_current_user
 from core.database import get_db
 from core.exceptions import NotFoundError, ValidationError
+from core.language import DEFAULT_LANGUAGE, normalize
 from models.db_models import Analysis, User
 from models.schemas import AnalysisDetailResponse, AnalysisResponse, QuotaResponse
 from services.analysis import pipeline, quota
@@ -82,6 +83,7 @@ async def delete_all_analyses(
 @router.post("/{repo_full_name:path}")
 async def start_analysis(
     repo_full_name: str,
+    language: str = DEFAULT_LANGUAGE,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -95,13 +97,17 @@ async def start_analysis(
         user_id=current_user.id,
         repo_name=repo_full_name,
         status="pending",
+        language=normalize(language),
     )
     db.add(analysis)
     await db.commit()
     await db.refresh(analysis)
 
-    logger.info("Analyse creee: id=%s repo=%s user=%s", analysis.id, repo_full_name, current_user.login)
-    return {"analysis_id": str(analysis.id)}
+    logger.info(
+        "Analyse creee: id=%s repo=%s user=%s langue=%s",
+        analysis.id, repo_full_name, current_user.login, analysis.language,
+    )
+    return {"analysis_id": str(analysis.id), "language": analysis.language}
 
 
 @router.get("/{analysis_id}/stream")

@@ -62,6 +62,7 @@ class Analysis(Base):
     repo_name    : Mapped[str]             = mapped_column(String(200))
     repo_sha     : Mapped[str | None]      = mapped_column(String(40), nullable=True)
     status       : Mapped[str]             = mapped_column(String(20), default="pending")
+    language     : Mapped[str]             = mapped_column(String(5), default="fr", server_default="fr")
     created_at   : Mapped[datetime]        = mapped_column(DateTime, default=utcnow)
     completed_at : Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

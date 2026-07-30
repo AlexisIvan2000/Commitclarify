@@ -4,6 +4,7 @@ import shutil
 from functools import lru_cache
 from pathlib import Path
 
+from core.language import DEFAULT_LANGUAGE, text
 from services.ai.linters.base import (
     MAX_ISSUES_PER_LINTER,
     extract_line,
@@ -19,15 +20,15 @@ JS_EXTENSIONS = {".js", ".mjs", ".cjs", ".jsx"}
 SERVER_ROOT = Path(__file__).resolve().parents[3]
 
 RULES = {
-    "no-unused-vars": ("Variable ou import inutilise", "low"),
-    "no-empty": ("Bloc vide", "low"),
-    "no-unreachable": ("Code inatteignable", "medium"),
-    "no-duplicate-case": ("Case duplique dans un switch", "medium"),
-    "no-redeclare": ("Variable re-declaree", "medium"),
-    "no-constant-condition": ("Condition constante", "medium"),
-    "eqeqeq": ("Egalite stricte requise (=== au lieu de ==)", "low"),
-    "no-var": ("Utiliser let/const au lieu de var", "low"),
-    "prefer-const": ("Utiliser const quand la variable n'est pas reassignee", "low"),
+    "no-unused-vars": "low",
+    "no-empty": "low",
+    "no-unreachable": "medium",
+    "no-duplicate-case": "medium",
+    "no-redeclare": "medium",
+    "no-constant-condition": "medium",
+    "eqeqeq": "low",
+    "no-var": "low",
+    "prefer-const": "low",
 }
 
 CONFIG_FILENAME = "cc-eslint.config.mjs"
@@ -73,7 +74,7 @@ def _write_config(tmp_dir: str) -> None:
     )
 
 
-async def run_eslint_on_files(files: list[dict]) -> list[dict]:
+async def run_eslint_on_files(files: list[dict], language: str = DEFAULT_LANGUAGE) -> list[dict]:
     js_files = select_files(files, JS_EXTENSIONS)
     if not js_files:
         logger.info("ESLint: aucun fichier JS a analyser")
@@ -121,14 +122,16 @@ async def run_eslint_on_files(files: list[dict]) -> list[dict]:
                         parse_failures += 1
                     continue
 
-                label, severity = RULES[rule_id]
                 line = msg.get("line", "?")
 
                 issues.append({
-                    "severity": severity,
-                    "title": label,
+                    "severity": RULES[rule_id],
+                    "title": text(f"rule.{rule_id}", language),
+                    "rule": rule_id,
                     "file_path": original_path,
-                    "description": f"Ligne {line} : {msg.get('message', '')}",
+                    "description": text(
+                        "issue.at_line", language, line=line, message=msg.get("message", ""),
+                    ),
                     "code_hint": extract_line(abs_path, line),
                     "source": "eslint",
                 })

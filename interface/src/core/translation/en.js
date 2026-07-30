@@ -1,0 +1,281 @@
+const en = {
+  languageName: 'English',
+
+  actions: {
+    back: 'Back',
+    backHome: 'Back to home',
+    retry: 'Retry',
+    view: 'View',
+    deleteAll: 'Delete all',
+    deleteAnalysisOf: 'Delete the analysis of',
+    logout: 'Sign out',
+    deleteAccount: 'Delete my account',
+    analyze: 'Analyze',
+    exportPdf: 'Export PDF',
+    exportJson: 'Export JSON',
+    fullReport: 'View the full report',
+    history: 'History',
+    repos: 'Repos',
+    all: 'All',
+    search: 'Search...',
+  },
+
+  errors: {
+    network: 'Cannot reach the server. Check your connection and try again.',
+    unexpected: 'An unexpected error occurred.',
+    unauthorized: 'Your session has expired, please sign in again.',
+    forbidden: 'Access denied.',
+    notFound: 'Resource not found.',
+    conflict: 'This analysis is already running or already finished.',
+    quota: 'Daily quota reached. Come back tomorrow.',
+    server: 'The server ran into an error. Try again in a moment.',
+    streamUnavailable: 'The analysis stream is unavailable.',
+    reposFailed: 'Could not load your repositories.',
+    historyFailed: 'Could not load the history.',
+    analysisNotFound: 'Analysis not found.',
+    exportFailed: 'The download failed.',
+    deleteFailed: 'Deletion failed.',
+    deleteAccountFailed: 'Account deletion failed.',
+    loginFailed: 'Sign-in failed. Please try again.',
+    renderCrash: 'This page could not be displayed.',
+  },
+
+  apiErrors: {
+    unauthorized: 'Your session has expired, please sign in again.',
+    validation_error: 'The request is invalid.',
+    not_found: 'Resource not found.',
+    conflict: 'This action is already running or already done.',
+    analysis_running: 'This analysis is already running.',
+    analysis_finished: 'This analysis is already finished. Open its report or start a new one.',
+    quota_exceeded: 'Daily quota reached. Come back tomorrow.',
+    external_service_error: 'An external service is unavailable. Try again in a moment.',
+    internal_error: 'The server ran into an error.',
+  },
+
+  auth: {
+    loggingIn: 'Signing in...',
+    loading: 'Loading...',
+    continueWithGithub: 'Continue with GitHub',
+    memberSince: 'Member since',
+    quotaRemaining: 'analyses left today',
+    confirmDeleteAccount: 'Permanently delete your account and all your data?',
+    interfaceLanguage: 'Interface language',
+    callbackErrors: {
+      state_invalide: 'The security check failed. Please start the sign-in again.',
+      echec_authentification: 'GitHub could not confirm your identity. Please try again.',
+      access_denied: 'You declined access to your GitHub account.',
+    },
+  },
+
+  analysis: {
+    stepLabels: {
+      secrets_detection: 'Secret detection',
+      gitignore_check: '.gitignore check',
+      quality_check: 'Code quality',
+      readme_check: 'README vs Code',
+    },
+    stepperLabels: {
+      fetching: 'Fetching',
+      indexing: 'Indexing',
+      analyzing: 'AI analysis',
+      done: 'Done',
+    },
+    statusLabels: {
+      completed: 'Completed',
+      processing: 'Running',
+      pending: 'Pending',
+      failed: 'Failed',
+    },
+    phases: {
+      starting: 'Starting...',
+      streaming: 'Analysis in progress...',
+      done: 'Completed',
+      error: 'Error',
+    },
+    title: 'Analysis of',
+    reportTitle: 'Report:',
+    issues: 'Issues',
+    recommendations: 'Recommendations',
+    clean: 'No issue found.',
+    pending: 'Waiting...',
+    untitledIssue: 'Untitled issue',
+    untitledRecommendation: 'Untitled recommendation',
+    files: 'files',
+    skipped: 'skipped',
+    emptyResults: 'This analysis contains no result.',
+    historyTitle: 'Analysis history',
+    historyEmpty: 'No analysis yet.',
+    confirmDeleteAll: 'Delete the whole history?',
+    reposTitle: 'Your repositories',
+    reposEmpty: 'No repository found.',
+    reposNoMatch: 'No repository matches the filters.',
+    visibility: 'Visibility',
+    language: 'Language',
+    public: 'Public',
+    private: 'Private',
+    reportLanguage: 'Report language',
+    reportLanguageHint: 'Reports are frozen in the language picked when they are started.',
+    generatedIn: 'Report generated in',
+  },
+
+  notFound: {
+    title: 'Page not found',
+    text: 'The page you are looking for does not exist or has been moved.',
+  },
+
+  home: {
+    tagline1: 'The smart guardian of your repositories.',
+    tagline2: 'Analyze the security, consistency and quality of your code.',
+    featuresTitle: 'What Commitclarify analyzes',
+    features: [
+      {
+        key: 'secrets',
+        title: 'Secret detection',
+        text: 'Finds out whether sensitive data is sitting in your code.',
+      },
+      {
+        key: 'gitignore',
+        title: '.gitignore check',
+        text: 'Makes sure your sensitive files are properly excluded from the repository.',
+      },
+      {
+        key: 'quality',
+        title: 'Code quality',
+        text: 'Spots overly long functions, duplicated code and bad practices.',
+      },
+      {
+        key: 'readme',
+        title: 'README vs Code',
+        text: 'Checks that your documentation exists and matches the code.',
+      },
+    ],
+    stepsTitle: 'How it works',
+    steps: [
+      { key: 'login', title: 'Sign in', text: 'One-click authentication through GitHub OAuth' },
+      { key: 'repo', title: 'Pick a repo', text: 'Choose from your public or private repositories' },
+      { key: 'run', title: 'Run the analysis', text: 'The AI scans your code in a few seconds' },
+      { key: 'act', title: 'Take action', text: 'Get a detailed report with recommendations' },
+    ],
+    navAnalyses: 'Analyses',
+    navHowItWorks: 'How it works',
+    rights: '© 2026 Commitclarify. All rights reserved.',
+    privacyLink: 'Privacy policy',
+    termsLink: 'Terms of use',
+  },
+
+  legal: {
+    updatedAt: 'Last updated:',
+    updatedDate: 'March 12, 2026',
+    privacyTitle: 'Privacy policy',
+    privacy: [
+      {
+        title: '1. Data collected',
+        paragraphs: ['CommitClarify only collects the data required to operate:'],
+        items: [
+          { term: 'GitHub information', text: 'id, username, email address and avatar through OAuth.' },
+          { term: 'Source code', text: 'the content of your repositories is fetched temporarily for analysis. It is not stored permanently.' },
+          { term: 'Analysis results', text: 'the generated reports are kept in your history.' },
+        ],
+      },
+      {
+        title: '2. Use of the data',
+        paragraphs: ['Your data is used exclusively to:'],
+        items: [
+          { text: 'Authenticate your access through GitHub OAuth.' },
+          { text: 'Analyze the source code of your repositories.' },
+          { text: 'Generate and store your analysis reports.' },
+        ],
+      },
+      {
+        title: '3. Data sharing',
+        paragraphs: ['Your data is never sold nor shared with third parties, except for the technical services required:'],
+        items: [
+          { term: 'GitHub API', text: 'to access your repositories.' },
+          { term: 'OpenAI API', text: 'anonymized code excerpts are sent for the AI analysis. No personal data is transmitted.' },
+        ],
+      },
+      {
+        title: '4. Security',
+        paragraphs: [
+          'GitHub access tokens are encrypted (Fernet) before storage. Communications are secured over HTTPS. Passwords and secrets are never stored in clear text.',
+        ],
+        items: [],
+      },
+      {
+        title: '5. Data deletion',
+        paragraphs: [
+          'You can delete your account at any time from the user menu. This permanently removes your profile, your analyses and your results.',
+        ],
+        items: [],
+      },
+      {
+        title: '6. Contact',
+        paragraphs: ['For any question about your data, reach us at: contact@commitclarify.com'],
+        items: [],
+      },
+    ],
+    termsTitle: 'Terms of use',
+    terms: [
+      {
+        title: '1. Acceptance of the terms',
+        paragraphs: [
+          'By using CommitClarify, you accept these terms of use. If you do not accept them, please do not use the service.',
+        ],
+        items: [],
+      },
+      {
+        title: '2. Service description',
+        paragraphs: [
+          'CommitClarify is an automated analysis tool for GitHub repositories. It detects security, code quality and documentation consistency issues using artificial intelligence and linting tools.',
+        ],
+        items: [],
+      },
+      {
+        title: '3. Usage limits',
+        paragraphs: [],
+        items: [
+          { text: 'Each user is limited to 3 analyses per day.' },
+          { text: 'The service is provided "as is" without any availability guarantee.' },
+          { text: 'Analysis results are indicative and do not constitute a professional security audit.' },
+        ],
+      },
+      {
+        title: '4. Liability',
+        paragraphs: [
+          'CommitClarify cannot be held liable for decisions taken on the basis of the generated reports. The user remains solely responsible for the security and quality of their code.',
+        ],
+        items: [],
+      },
+      {
+        title: '5. Intellectual property',
+        paragraphs: [
+          'You keep all rights over your source code. CommitClarify acquires no right over the analyzed code. The generated reports belong to you.',
+        ],
+        items: [],
+      },
+      {
+        title: '6. User account',
+        paragraphs: [],
+        items: [
+          { text: 'An account is created automatically on your first sign-in through GitHub.' },
+          { text: 'You can delete your account at any time. This action is irreversible.' },
+          { text: 'Deleting the account does not reset the daily usage limits.' },
+        ],
+      },
+      {
+        title: '7. Changes',
+        paragraphs: [
+          'We reserve the right to change these terms at any time. Changes take effect as soon as they are published on this page.',
+        ],
+        items: [],
+      },
+      {
+        title: '8. Contact',
+        paragraphs: ['For any question, reach us at: contact@commitclarify.com'],
+        items: [],
+      },
+    ],
+  },
+}
+
+export default en
