@@ -1,4 +1,3 @@
-import pytest
 from services.rag.chunker import chunk_files, _get_chunk_config, _get_separators
 
 
@@ -78,17 +77,17 @@ def test_chunk_metadata_fields():
 
 #Tests _get_chunk_config
 def test_config_extension_gets_config_settings():
-    config = _get_chunk_config("json", "config/settings.json")
+    config = _get_chunk_config("config/settings.json")
     assert config["chunk_size"] == 800
 
 
 def test_doc_extension_gets_doc_settings():
-    config = _get_chunk_config("markdown", "docs/guide.md")
+    config = _get_chunk_config("docs/guide.md")
     assert config["chunk_size"] == 1000
 
 
 def test_code_extension_gets_code_settings():
-    config = _get_chunk_config("python", "src/main.py")
+    config = _get_chunk_config("src/main.py")
     assert config["chunk_size"] == 1500
 
 

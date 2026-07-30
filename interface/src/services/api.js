@@ -13,6 +13,24 @@ export function clearTokens() {
   localStorage.removeItem('refresh_token')
 }
 
+function storeTokens(data) {
+  localStorage.setItem('access_token', data.access_token)
+  localStorage.setItem('refresh_token', data.refresh_token)
+}
+
+export async function exchangeAuthCode(code) {
+  const res = await fetch(`${API_URL}/auth/exchange`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  })
+  if (!res.ok) throw new Error("Code d'authentification invalide ou expiré")
+
+  const data = await res.json()
+  storeTokens(data)
+  return data
+}
+
 export async function apiFetch(path, options = {}) {
   let token = getToken()
   let res = await fetch(`${API_URL}${path}`, {
@@ -63,9 +81,7 @@ async function tryRefreshToken() {
     })
     if (!res.ok) return false
 
-    const data = await res.json()
-    localStorage.setItem('access_token', data.access_token)
-    localStorage.setItem('refresh_token', data.refresh_token)
+    storeTokens(await res.json())
     return true
   } catch {
     return false

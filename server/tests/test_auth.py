@@ -1,8 +1,8 @@
 import uuid
 import pytest
-import pytest_asyncio
-from datetime import datetime, timedelta
-from unittest.mock import patch, AsyncMock
+from datetime import timedelta
+
+from core.clock import utcnow
 
 from services.authentication.token import create_access_token, verify_access_token
 
@@ -26,7 +26,7 @@ def test_verify_expired_token():
 
     expired_payload = {
         "sub": str(uuid.uuid4()),
-        "exp": datetime.utcnow() - timedelta(hours=1),
+        "exp": utcnow() - timedelta(hours=1),
     }
     token = jwt.encode(expired_payload, JWT_KEY, algorithm=JWT_ALGORITHM)
     with pytest.raises(ValueError):

@@ -1,18 +1,12 @@
-import json
 import logging
 import uuid
 from pathlib import Path
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from core.file_rules import CONFIG_EXTENSIONS, DOC_EXTENSIONS
+
 logger = logging.getLogger(__name__)
-
-# Charger la config depuis extensions.json
-_config_path = Path(__file__).resolve().parent.parent.parent / "models" / "extensions.json"
-with open(_config_path) as _f:
-    _config = json.load(_f)
-
-CONFIG_EXTENSIONS = set(_config["ALLOWED_EXTENSIONS"]["config"])
-DOC_EXTENSIONS = set(_config["ALLOWED_EXTENSIONS"]["docs"])
 
 CHUNK_CONFIG = {
     "code": {
@@ -30,8 +24,7 @@ CHUNK_CONFIG = {
 }
 
 
-def _get_chunk_config(language: str, path: str) -> dict:
-    """Retourne la configuration selon le type de fichier."""
+def _get_chunk_config(path: str) -> dict:
     suffix = Path(path).suffix.lower()
     if suffix in CONFIG_EXTENSIONS:
         return CHUNK_CONFIG["config"]
@@ -41,7 +34,6 @@ def _get_chunk_config(language: str, path: str) -> dict:
 
 
 def _get_separators(language: str) -> list[str]:
-    """Séparateurs spécifiques pour chaque langage de programmation."""
     separators_by_lang = {
         "python": ["\nclass ", "\ndef ", "\n\n", "\n", " ", ""],
         "js":     ["\nfunction ", "\nconst ", "\nclass ", "\n\n", "\n", " ", ""],
@@ -75,7 +67,6 @@ def chunk_files(files: list[dict]) -> dict:
     readme_chunks = []
 
     for file in files:
-        # ── README traité séparément ────────────────────────────────────
         if Path(file["path"]).name.lower() == "readme.md":
             readme_chunks = _chunk_single_file(
                 file=file,
@@ -85,8 +76,7 @@ def chunk_files(files: list[dict]) -> dict:
             )
             continue
 
-        # ── Fichiers normaux ────────────────────────────────────────────
-        config = _get_chunk_config(file["language"], file["path"])
+        config = _get_chunk_config(file["path"])
         separators = _get_separators(file["language"])
 
         chunks = _chunk_single_file(
@@ -116,10 +106,7 @@ def _chunk_single_file(
     separators: list[str],
     file_type: str,
 ) -> list[dict]:
-    """
-    Découpe un fichier en chunks et attache les métadonnées.
-    Retourne une liste de chunks prêts pour ChromaDB.
-    """
+    
     content = file["content"]
     path = file["path"]
     language = file["language"]
@@ -138,7 +125,7 @@ def _chunk_single_file(
 
     raw_chunks = splitter.split_text(content)
 
-    # Filtrer les chunks trop courts — pas de valeur pour l'analyse
+    
     raw_chunks = [c for c in raw_chunks if len(c.strip()) > 50]
 
     chunks = []

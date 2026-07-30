@@ -21,6 +21,9 @@ ENV/
 # ChromaDB (donnees vectorielles locales)
 chroma_db/
 
+# Node (ESLint utilise par l'agent qualite)
+node_modules/
+
 # Tests
 .pytest_cache/
 pytest.ini

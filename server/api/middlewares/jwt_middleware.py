@@ -3,16 +3,20 @@ import logging
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
 from services.authentication.token import verify_access_token
 
 logger = logging.getLogger(__name__)
 
 PUBLIC_PATHS = {
+    "/",
+    "/health",
     "/docs",
     "/redoc",
     "/openapi.json",
     "/auth/github/login",
     "/auth/callback",
+    "/auth/exchange",
     "/auth/refresh",
 }
 

@@ -1,4 +1,3 @@
-import pytest
 from services.rag.indexer import build_collection_name
 
 

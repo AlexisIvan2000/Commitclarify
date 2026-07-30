@@ -1,86 +1,148 @@
-import hashlib
+import asyncio
 import logging
-from datetime import datetime
+from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
+from sqlalchemy import delete as sql_delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete as sql_delete
 
-from core.config import GITHUB_CLIENT_ID, GITHUB_CALLBACK_URL, FRONTEND_URL
-from core.database import get_db
-from core.rate_limit import limiter
 from api.dependencies import get_current_user
-from models.schemas import UserResponse, TokenResponse, RefreshTokenRequest
-from models.db_models import User, RefreshToken, Analysis, AnalysisResult
-
-logger = logging.getLogger(__name__)
+from core.config import (
+    COOKIE_SECURE,
+    FRONTEND_URL,
+    GITHUB_CALLBACK_URL,
+    GITHUB_CLIENT_ID,
+)
+from core.database import get_db
+from core.exceptions import AppError, AuthError
+from core.rate_limit import limiter
+from core.security import (
+    OAUTH_STATE_COOKIE,
+    OAUTH_STATE_TTL_SECONDS,
+    generate_url_safe_token,
+    tokens_match,
+)
+from models.db_models import Analysis, AnalysisResult, AuthCode, RefreshToken, User
+from models.schemas import AuthCodeRequest, RefreshTokenRequest, TokenResponse, UserResponse
 from services.authentication.auth import github_exchange_code, github_get_user, upsert_user
 from services.authentication.token import (
+    consume_auth_code,
     create_access_token,
+    create_auth_code,
     create_refresh_token,
-    verify_access_token,
+    get_active_refresh_token,
     revoke_refresh_token,
 )
+from services.rag.indexer import delete_collection
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+GITHUB_SCOPES = "read:user user:email repo"
+
+
+def _frontend_redirect(**params: str) -> RedirectResponse:
+    return RedirectResponse(url=f"{FRONTEND_URL}/auth/callback?{urlencode(params)}")
 
 
 @router.get("/github/login")
 @limiter.limit("10/minute")
 async def login_github(request: Request):
-    """Redirige vers la page d'autorisation GitHub."""
+    state = generate_url_safe_token()
+
     github_auth_url = (
-        f"https://github.com/login/oauth/authorize"
-        f"?client_id={GITHUB_CLIENT_ID}"
-        f"&redirect_uri={GITHUB_CALLBACK_URL}"
-        f"&scope=read:user user:email repo"
+        "https://github.com/login/oauth/authorize?"
+        + urlencode({
+            "client_id": GITHUB_CLIENT_ID,
+            "redirect_uri": GITHUB_CALLBACK_URL,
+            "scope": GITHUB_SCOPES,
+            "state": state,
+        })
     )
-    return RedirectResponse(url=github_auth_url)
+
+    response = RedirectResponse(url=github_auth_url)
+    response.set_cookie(
+        OAUTH_STATE_COOKIE,
+        state,
+        max_age=OAUTH_STATE_TTL_SECONDS,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite="lax",
+        path="/auth",
+    )
+    return response
 
 
 @router.get("/callback")
-@limiter.limit("5/minute")
-async def callback_github(request: Request, code: str, db: AsyncSession = Depends(get_db)):
-    """Callback OAuth GitHub : échange le code contre des tokens."""
-    try:
-        access_token = await github_exchange_code(code)
-        github_user = await github_get_user(access_token)
-        user = await upsert_user(github_user, access_token, db)
-    except ValueError as e:
-        logger.warning("Echec OAuth callback: %s", e)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+@limiter.limit("10/minute")
+async def callback_github(
+    request: Request,
+    code: str,
+    state: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    expected_state = request.cookies.get(OAUTH_STATE_COOKIE)
 
-    jwt_access = create_access_token(user.id)
-    jwt_refresh = await create_refresh_token(user.id, db)
+    if not tokens_match(state, expected_state):
+        logger.warning("State OAuth invalide ou absent (CSRF probable)")
+        response = _frontend_redirect(error="state_invalide")
+        response.delete_cookie(OAUTH_STATE_COOKIE, path="/auth")
+        return response
+
+    try:
+        github_token = await github_exchange_code(code)
+        github_user = await github_get_user(github_token)
+        user = await upsert_user(github_user, github_token, db)
+    except AppError as exc:
+        logger.warning("Echec OAuth callback: %s", exc.message)
+        response = _frontend_redirect(error="echec_authentification")
+        response.delete_cookie(OAUTH_STATE_COOKIE, path="/auth")
+        return response
+
+    auth_code = await create_auth_code(
+        user_id=user.id,
+        access_token=create_access_token(user.id),
+        refresh_token=await create_refresh_token(user.id, db),
+        db=db,
+    )
 
     logger.info("Connexion reussie: user=%s (github_id=%s)", user.login, user.github_id)
-    return RedirectResponse(url=f"{FRONTEND_URL}/auth/callback?access_token={jwt_access}&refresh_token={jwt_refresh}")
+
+    response = _frontend_redirect(code=auth_code)
+    response.delete_cookie(OAUTH_STATE_COOKIE, path="/auth")
+    return response
+
+
+@router.post("/exchange", response_model=TokenResponse)
+@limiter.limit("10/minute")
+async def exchange_auth_code(
+    request: Request,
+    body: AuthCodeRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    access_token, refresh_token = await consume_auth_code(body.code, db)
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/refresh", response_model=TokenResponse)
-@limiter.limit("5/minute")
-async def refresh_token(request: Request, body: RefreshTokenRequest, db: AsyncSession = Depends(get_db)):
-    """Rafraîchit l'access token via le refresh token."""
-    token_hash = hashlib.sha256(body.refresh_token.encode()).hexdigest()
-    result = await db.execute(
-        select(RefreshToken).where(
-            RefreshToken.token_hash == token_hash,
-            RefreshToken.revoked_at.is_(None),
-        )
-    )
-    stored = result.scalar_one_or_none()
+@limiter.limit("10/minute")
+async def refresh_token(
+    request: Request,
+    body: RefreshTokenRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    stored = await get_active_refresh_token(body.refresh_token, db)
+    if not stored:
+        raise AuthError("Refresh token invalide ou expire")
 
-    if not stored or stored.expires_at < datetime.utcnow():
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token invalide ou expiré")
-
-    # Révoquer l'ancien et créer un nouveau (rotation)
     await revoke_refresh_token(body.refresh_token, db)
 
-    new_access = create_access_token(stored.user_id)
-    new_refresh = await create_refresh_token(stored.user_id, db)
-
-    return TokenResponse(access_token=new_access, refresh_token=new_refresh)
+    return TokenResponse(
+        access_token=create_access_token(stored.user_id),
+        refresh_token=await create_refresh_token(stored.user_id, db),
+    )
 
 
 @router.post("/logout")
@@ -91,7 +153,6 @@ async def logout(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Révoque le refresh token de l'utilisateur."""
     await revoke_refresh_token(body.refresh_token, db)
     logger.info("Deconnexion: user=%s", current_user.login)
     return {"detail": "Déconnexion réussie"}
@@ -99,42 +160,49 @@ async def logout(
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
-    """Retourne le profil de l'utilisateur connecté."""
     return current_user
 
 
 @router.delete("/account")
 async def delete_account(
-    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Supprime le compte utilisateur et toutes ses donnees (sauf analysis_log pour le rate limit)."""
-    # Récupérer les IDs des analyses de l'utilisateur
     result = await db.execute(
-        select(Analysis.id).where(Analysis.user_id == current_user.id)
+        select(Analysis.id, Analysis.repo_name, Analysis.repo_sha).where(
+            Analysis.user_id == current_user.id
+        )
     )
-    analysis_ids = [row[0] for row in result.all()]
+    analyses = result.all()
+    analysis_ids = [row.id for row in analyses]
 
-    # Supprimer analysis_results d'abord (FK vers analyses)
     if analysis_ids:
         await db.execute(
             sql_delete(AnalysisResult).where(AnalysisResult.analysis_id.in_(analysis_ids))
         )
 
-    # Supprimer refresh tokens
-    await db.execute(
-        sql_delete(RefreshToken).where(RefreshToken.user_id == current_user.id)
-    )
+    await db.execute(sql_delete(RefreshToken).where(RefreshToken.user_id == current_user.id))
+    await db.execute(sql_delete(AuthCode).where(AuthCode.user_id == current_user.id))
+    await db.execute(sql_delete(Analysis).where(Analysis.user_id == current_user.id))
 
-    # Supprimer analyses
-    await db.execute(
-        sql_delete(Analysis).where(Analysis.user_id == current_user.id)
-    )
+    user_id = str(current_user.id)
+    login = current_user.login
+    github_id = current_user.github_id
 
-    # Supprimer l'utilisateur
     await db.delete(current_user)
     await db.commit()
 
-    logger.info("Compte supprime: user=%s (github_id=%s)", current_user.login, current_user.github_id)
+    await _purge_vector_collections(user_id, analyses)
+
+    logger.info("Compte supprime: user=%s (github_id=%s)", login, github_id)
     return {"detail": "Compte supprime"}
+
+
+async def _purge_vector_collections(user_id: str, analyses) -> None:
+    for row in analyses:
+        if not row.repo_sha:
+            continue
+        try:
+            await asyncio.to_thread(delete_collection, user_id, row.repo_name, row.repo_sha)
+        except Exception as exc:
+            logger.warning("Purge collection %s echouee: %s", row.repo_name, exc)

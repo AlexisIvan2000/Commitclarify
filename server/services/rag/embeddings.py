@@ -2,39 +2,42 @@ import asyncio
 import logging
 import os
 from functools import lru_cache
-from sentence_transformers import SentenceTransformer
+from typing import TYPE_CHECKING
 
-os.environ.setdefault("SENTENCE_TRANSFORMERS_HOME", "/data/models")
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
-# Modele local — zero API, zero quota
+os.environ.setdefault("SENTENCE_TRANSFORMERS_HOME", "/data/models")
+
+MODEL_NAME = "all-mpnet-base-v2"
+BATCH_SIZE = 256
+
 _model = None
 
 
-def _get_model() -> SentenceTransformer:
+def _get_model() -> "SentenceTransformer":
     global _model
     if _model is None:
-        logger.info("Chargement du modele d'embeddings...")
-        _model = SentenceTransformer("all-mpnet-base-v2")
+        from sentence_transformers import SentenceTransformer
+
+        logger.info("Chargement du modele d'embeddings %s...", MODEL_NAME)
+        _model = SentenceTransformer(MODEL_NAME)
         logger.info("Modele d'embeddings charge")
     return _model
 
-BATCH_SIZE = 256
 
-# Cache pour les queries fixes des agents (toujours les memes strings)
 @lru_cache(maxsize=32)
 def _cached_encode(text: str) -> tuple[float, ...]:
     return tuple(_get_model().encode(text).tolist())
 
 
 async def get_embeddings_batch(texts: list[str]) -> list[list[float]]:
-    """Genere les embeddings pour une liste de textes via le modele local."""
     model = _get_model()
     embeddings = await asyncio.to_thread(model.encode, texts, batch_size=BATCH_SIZE)
     return [e.tolist() for e in embeddings]
 
 
 async def get_embedding(text: str) -> list[float]:
-    """Genere l'embedding d'un seul texte (cache pour les queries repetees)."""
-    return list(_cached_encode(text))
+    return list(await asyncio.to_thread(_cached_encode, text))

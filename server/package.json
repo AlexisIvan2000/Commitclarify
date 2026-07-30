@@ -1,0 +1,8 @@
+{
+  "name": "commitclarify-linters",
+  "private": true,
+  "description": "ESLint utilise par l'agent qualite du backend CommitClarify",
+  "dependencies": {
+    "eslint": "^9.39.0"
+  }
+}

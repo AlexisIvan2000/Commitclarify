@@ -1,8 +1,7 @@
 import uuid
 import pytest
 import pytest_asyncio
-from datetime import datetime
-from unittest.mock import patch, AsyncMock
+from core.clock import utcnow
 
 from models.db_models import Analysis, AnalysisResult
 
@@ -16,8 +15,8 @@ async def sample_analysis(db, test_user) -> Analysis:
         repo_name="owner/repo",
         status="completed",
         repo_sha="abc12345",
-        created_at=datetime.utcnow(),
-        completed_at=datetime.utcnow(),
+        created_at=utcnow(),
+        completed_at=utcnow(),
     )
     db.add(analysis)
     await db.commit()
@@ -35,7 +34,7 @@ async def analysis_with_results(db, sample_analysis) -> Analysis:
             status="clean",
             issues=[],
             recommendations=[],
-            created_at=datetime.utcnow(),
+            created_at=utcnow(),
         ))
     await db.commit()
     return sample_analysis

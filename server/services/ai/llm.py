@@ -26,7 +26,6 @@ REQUIRED_ISSUE_FIELDS = {"severity", "title", "file_path", "description"}
 
 
 def parse_response(raw: str) -> dict:
-    """Parse la reponse JSON du LLM, valide le schema, filtre les issues incompletes."""
     clean = re.sub(r"```json|```", "", raw).strip()
     try:
         result = json.loads(clean)

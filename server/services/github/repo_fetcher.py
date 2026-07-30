@@ -1,56 +1,37 @@
 import asyncio
 import base64
-import json
 import logging
-import httpx
 from pathlib import Path
 from typing import Optional
 
+import httpx
+
+from core.file_rules import (
+    ALLOWED_EXTENSIONS,
+    ALLOWED_FILENAMES,
+    BATCH_SIZE,
+    EXCLUDED_DIRS,
+    MAX_FILE_LINES,
+    MAX_FILE_SIZE,
+    MAX_REPO_FILES,
+)
+
 logger = logging.getLogger(__name__)
-
-# Charger la config depuis extensions.json
-_config_path = Path(__file__).resolve().parent.parent.parent / "models" / "extensions.json"
-with open(_config_path) as _f:
-    _config = json.load(_f)
-
-# Aplatir toutes les extensions en un seul set
-ALLOWED_EXTENSIONS = {
-    ext
-    for group in _config["ALLOWED_EXTENSIONS"].values()
-    for ext in group
-}
-
-ALLOWED_FILENAMES = set(_config["ALLOWED_FILENAMES"])
-EXCLUDED_DIRS = set(_config["EXCLUDED_DIRS"])
-
-MAX_FILE_SIZE = _config["LIMITS"]["MAX_FILE_SIZE"]
-BATCH_SIZE = _config["LIMITS"]["BATCH_SIZE"]
-MAX_FILE_LINES = _config["LIMITS"]["MAX_FILE_LINES"]
-MAX_REPO_FILES = _config["LIMITS"]["MAX_REPO_FILES"]
 
 
 def _is_relevant(path: str, size: int) -> bool:
-    """Vérifie si un fichier doit être inclus ou ignoré."""
     p = Path(path)
 
-    # Exclure les dossiers blacklistés
-    parts = set(p.parts[:-1])
-    if parts & EXCLUDED_DIRS:
+    if set(p.parts[:-1]) & EXCLUDED_DIRS:
         return False
 
-    # Cas spéciaux par nom exact
-    if p.name in ALLOWED_FILENAMES:
-        return True
-
-    # Vérifier l'extension
-    if p.suffix.lower() not in ALLOWED_EXTENSIONS:
-        return False
-
-    # Taille max
     if size > MAX_FILE_SIZE:
         return False
 
-    return True
+    if p.name in ALLOWED_FILENAMES:
+        return True
+
+    return p.suffix.lower() in ALLOWED_EXTENSIONS
 
 
 async def get_repo_tree(
@@ -110,7 +91,6 @@ async def _fetch_file_content(
     file: dict,
     headers: dict,
 ) -> Optional[dict]:
-    """Télécharge le contenu d'un fichier et le décode depuis base64."""
     url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file['path']}"
 
     try:
@@ -151,10 +131,7 @@ async def fetch_repo_files(
     github_token: str,
     branch: str = "HEAD",
 ) -> dict:
-    """
-    Point d'entrée principal.
-    Retourne : { sha, files: [...], stats: {...} }
-    """
+   
 
     repo_sha = await get_repo_latest_sha(owner, repo, github_token)
 
@@ -203,7 +180,6 @@ async def get_repo_latest_sha(
     repo: str,
     github_token: str,
 ) -> str:
-    """Récupère le SHA du dernier commit — utilisé pour le cache."""
     async with httpx.AsyncClient(timeout=15) as client:
         response = await client.get(
             f"https://api.github.com/repos/{owner}/{repo}/commits/HEAD",

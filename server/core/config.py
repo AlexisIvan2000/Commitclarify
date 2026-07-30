@@ -1,7 +1,8 @@
-from dotenv import load_dotenv
 import os
-load_dotenv()
 
+from dotenv import load_dotenv
+
+load_dotenv()
 
 JWT_KEY = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
@@ -12,7 +13,6 @@ GITHUB_CALLBACK_URL = os.getenv("GITHUB_CALLBACK_URL")
 
 FERNET_KEY = os.getenv("FERNET_KEY")
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 FRONTEND_URL = os.getenv("FRONTEND_URL")
@@ -20,3 +20,22 @@ DB_URL = os.getenv("DB_URL")
 
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
+
+DAILY_ANALYSIS_LIMIT = int(os.getenv("DAILY_ANALYSIS_LIMIT", "3"))
+
+COOKIE_SECURE = (GITHUB_CALLBACK_URL or "").startswith("https://")
+
+REQUIRED_SETTINGS = {
+    "JWT_SECRET": JWT_KEY,
+    "GITHUB_CLIENT_ID": GITHUB_CLIENT_ID,
+    "GITHUB_CLIENT_SECRET": GITHUB_CLIENT_SECRET,
+    "GITHUB_CALLBACK_URL": GITHUB_CALLBACK_URL,
+    "FERNET_KEY": FERNET_KEY,
+    "OPENAI_API_KEY": OPENAI_API_KEY,
+    "FRONTEND_URL": FRONTEND_URL,
+    "DB_URL": DB_URL,
+}
+
+
+def missing_settings() -> list[str]:
+    return sorted(name for name, value in REQUIRED_SETTINGS.items() if not value)

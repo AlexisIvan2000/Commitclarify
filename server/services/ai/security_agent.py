@@ -8,7 +8,7 @@ from services.rag.indexer import retrieve_chunks
 
 logger = logging.getLogger(__name__)
 
-# --- Regex patterns pour detection deterministe de secrets ---
+
 SECRET_PATTERNS = [
     ("Cle OpenAI exposee",          r"sk-[a-zA-Z0-9_-]{20,}",                   "critical"),
     ("Cle AWS Access Key exposee",  r"AKIA[0-9A-Z]{16}",                        "critical"),
@@ -19,17 +19,86 @@ SECRET_PATTERNS = [
     ("String de connexion exposee", r"(postgresql|postgres|mysql|mongodb|redis|amqp|ftp|ssh)(\+\w+)?://[^:\s]+:[^@\s]+@[^/\s]+", "high"),
 ]
 
-# Fichiers et lignes a exclure pour eviter les faux positifs
-EXCLUDED_FILES = {".env.example", ".env.sample", ".env.template"}
-EXCLUDED_FILE_PATTERNS = re.compile(r"test_|_test\.|\.test\.|spec\.|security_agent\.py$", re.IGNORECASE)
+EXCLUDED_FILES = {
+    ".env.example", ".env.sample", ".env.template", ".env.local.example", ".env.dist",
+}
+EXCLUDED_FILE_PATTERNS = re.compile(r"test_|_test\.|\.test\.|spec\.", re.IGNORECASE)
 EXCLUDED_LINE_PATTERNS = re.compile(
     r'placeholder|your_|changeme|xxx|TODO|mock|fake|dummy|fixture',
     re.IGNORECASE,
 )
 
+COMMITTED_SECRET_FILES = {
+    ".env": "Fichier .env commite dans le depot",
+    ".env.local": "Fichier .env.local commite dans le depot",
+    ".env.dev": "Fichier .env.dev commite dans le depot",
+    ".env.development": "Fichier .env.development commite dans le depot",
+    ".env.staging": "Fichier .env.staging commite dans le depot",
+    ".env.prod": "Fichier .env.prod commite dans le depot",
+    ".env.production": "Fichier .env.production commite dans le depot",
+    ".env.test": "Fichier .env.test commite dans le depot",
+    ".env.backup": "Sauvegarde de fichier .env commitee",
+    ".env.old": "Ancien fichier .env commite",
+    ".netrc": "Fichier .netrc (identifiants reseau) commite",
+    ".pgpass": "Fichier .pgpass (mot de passe PostgreSQL) commite",
+    "id_rsa": "Cle privee SSH commitee",
+    "id_dsa": "Cle privee SSH commitee",
+    "id_ecdsa": "Cle privee SSH commitee",
+    "id_ed25519": "Cle privee SSH commitee",
+    "credentials": "Fichier d'identifiants commite",
+    "secrets": "Fichier de secrets commite",
+    "service-account.json": "Cle de compte de service Google commitee",
+    "serviceAccountKey.json": "Cle de compte de service Google commitee",
+    "terraform.tfvars": "Variables Terraform commitees (contiennent souvent des secrets)",
+    "google-services.json": "Configuration Google Services commitee",
+}
+
+COMMITTED_SECRET_SUFFIXES = {
+    ".pem": "Certificat ou cle privee au format PEM commite",
+    ".key": "Fichier de cle commite",
+    ".p12": "Conteneur de certificat PKCS#12 commite",
+    ".pfx": "Conteneur de certificat PFX commite",
+    ".jks": "Keystore Java commite",
+    ".keystore": "Keystore commite",
+    ".ppk": "Cle privee PuTTY commitee",
+}
+
+
+def _scan_committed_secret_files(files: list[dict]) -> list[dict]:
+    issues = []
+
+    for f in files:
+        path = f.get("path", "")
+        if not path:
+            continue
+
+        name = Path(path).name
+        if name in EXCLUDED_FILES:
+            continue
+
+        title = COMMITTED_SECRET_FILES.get(name) or COMMITTED_SECRET_SUFFIXES.get(
+            Path(path).suffix.lower()
+        )
+        if not title:
+            continue
+
+        issues.append({
+            "severity": "critical",
+            "title": title,
+            "file_path": path,
+            "description": (
+                "Ce type de fichier ne doit jamais etre versionne : il contient des secrets "
+                "par nature. Retirez-le de l'historique Git et ajoutez-le au .gitignore."
+            ),
+            "code_hint": path,
+            "source": "filename",
+        })
+
+    logger.info("Scan fichiers sensibles: %d issues", len(issues))
+    return issues[:15]
+
 
 def _scan_secrets_regex(files: list[dict]) -> list[dict]:
-    """Scan deterministe des secrets via regex — avant le LLM."""
     issues = []
 
     for f in files:
@@ -38,7 +107,6 @@ def _scan_secrets_regex(files: list[dict]) -> list[dict]:
         if not content:
             continue
 
-        # Exclure les fichiers template et de test
         filename = Path(path).name
         if filename in EXCLUDED_FILES:
             continue
@@ -46,7 +114,6 @@ def _scan_secrets_regex(files: list[dict]) -> list[dict]:
             continue
 
         for line_num, line in enumerate(content.splitlines(), 1):
-            # Exclure les lignes avec des placeholders
             if EXCLUDED_LINE_PATTERNS.search(line):
                 continue
 
@@ -60,24 +127,22 @@ def _scan_secrets_regex(files: list[dict]) -> list[dict]:
                         "code_hint": line.strip()[:200],
                         "source": "regex",
                     })
-                    break  # une seule issue par ligne
+                    break  
 
     logger.info("Regex secrets scan: %d issues", len(issues))
     return issues[:15]
 
 
 async def run_secrets_detection(collection_name: str, files: list[dict]) -> dict:
-    """Detecte les secrets via regex (deterministe) + LLM (contextuel)."""
     logger.info("Secrets detection demarree (collection=%s)", collection_name)
 
-    # Regex scan + embedding en parallele
-    import asyncio
     query = "hardcoded API key secret token password credential private key"
 
+    filename_issues = _scan_committed_secret_files(files)
     regex_issues = _scan_secrets_regex(files)
     embedding = await get_embedding(query)
 
-    chunks = retrieve_chunks(collection_name, query, embedding, n_results=20)
+    chunks = retrieve_chunks(collection_name, embedding, n_results=20)
     context = format_chunks(chunks)
 
     prompt = f"""Tu es un auditeur de securite strict et precis.
@@ -95,6 +160,7 @@ REGLES STRICTES :
 - NE SIGNALE PAS les fichiers de test (test_, _test, spec., fixtures, mocks) — les fausses cles dans les tests sont intentionnelles
 - NE SIGNALE PAS les definitions de regex ou patterns de detection (ex: r"AKIA...", r"sk-...")
 - NE SIGNALE PAS les URLs publiques d'API
+- EN REVANCHE, dans un fichier .env versionne (hors .env.example), toute valeur litterale non placeholder EST un secret reel : signale-la
 - NE SUPPOSE RIEN qui n'est pas dans le code fourni
 - Le "file_path" DOIT etre exactement celui indique dans les extraits fournis — ne jamais inventer un chemin
 - Chaque issue DOIT citer un extrait exact du code comme preuve dans "code_hint" (copiable pour Ctrl+F)
@@ -131,8 +197,8 @@ FORMAT :
     for issue in llm_issues:
         issue["source"] = "llm"
 
-    # --- Merge regex + LLM ---
-    all_issues = regex_issues + llm_issues
+  
+    all_issues = filename_issues + regex_issues + llm_issues
     status = "issues_found" if all_issues else "clean"
 
     recommendations = llm_result.get("recommendations", [])
@@ -141,9 +207,17 @@ FORMAT :
             "priority": "high",
             "message": f"Scan automatique : {len(regex_issues)} secret(s) detecte(s) par pattern matching — a corriger en priorite"
         })
+    if filename_issues:
+        recommendations.insert(0, {
+            "priority": "high",
+            "message": (
+                f"{len(filename_issues)} fichier(s) sensible(s) versionne(s) : retirez-les de l'index "
+                "(git rm --cached), ajoutez-les au .gitignore, puis faites tourner les cles concernees"
+            )
+        })
 
-    logger.info("Secrets detection terminee: %d regex + %d llm = %d issues",
-                len(regex_issues), len(llm_issues), len(all_issues))
+    logger.info("Secrets detection terminee: %d fichiers + %d regex + %d llm = %d issues",
+                len(filename_issues), len(regex_issues), len(llm_issues), len(all_issues))
     return {
         "status": status,
         "issues": all_issues,
@@ -152,7 +226,6 @@ FORMAT :
 
 
 async def run_gitignore_check(collection_name: str, has_gitignore: bool) -> dict:
-    """Verifie que les fichiers sensibles sont bien exclus du depot via un .gitignore."""
     logger.info("Gitignore check demarree (has_gitignore=%s)", has_gitignore)
     if not has_gitignore:
         return {
@@ -176,7 +249,7 @@ async def run_gitignore_check(collection_name: str, has_gitignore: bool) -> dict
 
     query = "gitignore env secrets sensitive files excluded"
     embedding = await get_embedding(query)
-    chunks = retrieve_chunks(collection_name, query, embedding, n_results=10)
+    chunks = retrieve_chunks(collection_name, embedding, n_results=10)
     context = format_chunks(chunks)
 
     prompt = f"""Tu es un auditeur de securite strict et precis.

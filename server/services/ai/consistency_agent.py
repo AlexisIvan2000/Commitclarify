@@ -1,9 +1,8 @@
 import asyncio
 import logging
 
+from services.ai.linters import run_eslint_on_files, run_ruff_on_files
 from services.ai.llm import format_chunks, parse_response, generate
-from services.ai.ruff_runner import run_ruff_on_files
-from services.ai.eslint_runner import run_eslint_on_files
 from services.rag.embeddings import get_embedding
 from services.rag.indexer import retrieve_chunks
 
@@ -11,10 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 async def run_quality_check(collection_name: str, files: list[dict]) -> dict:
-    """Detecte les problemes de qualite via Ruff (factuel) + LLM (complement)."""
     logger.info("Quality check demarree (collection=%s, %d fichiers)", collection_name, len(files))
 
-    # Embedding + Ruff + ESLint en parallele
     query = "function class method definition implementation logic duplicate"
     embedding_task = get_embedding(query)
     ruff_task = run_ruff_on_files(files)
@@ -26,7 +23,7 @@ async def run_quality_check(collection_name: str, files: list[dict]) -> dict:
     linter_issues = ruff_issues + eslint_issues
     logger.info("Linters: %d ruff + %d eslint issues", len(ruff_issues), len(eslint_issues))
 
-    chunks = retrieve_chunks(collection_name, query, embedding, n_results=20)
+    chunks = retrieve_chunks(collection_name, embedding, n_results=20)
     context = format_chunks(chunks)
 
     prompt = f"""Tu es un expert en qualite logicielle strict et precis.
@@ -68,7 +65,6 @@ FORMAT :
     for issue in llm_issues:
         issue["source"] = "llm"
 
-    # --- Merge ---
     all_issues = linter_issues + llm_issues
     status = "issues_found" if all_issues else "clean"
 
@@ -97,7 +93,6 @@ async def run_readme_check(
     collection_name: str,
     readme_chunks: list[dict],
 ) -> dict:
-    """Verifie la coherence entre le README et le code."""
     logger.info("README check demarree (collection=%s, %d chunks readme)", collection_name, len(readme_chunks))
     if not readme_chunks:
         return {
@@ -109,7 +104,7 @@ async def run_readme_check(
 
     query = "endpoint route function feature implementation"
     embedding = await get_embedding(query)
-    chunks = retrieve_chunks(collection_name, query, embedding, n_results=8)
+    chunks = retrieve_chunks(collection_name, embedding, n_results=8)
 
     readme_text = "\n\n".join([c["content"] for c in readme_chunks])
     code_context = format_chunks(chunks)
