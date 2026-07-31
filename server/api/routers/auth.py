@@ -6,7 +6,6 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_current_user
-from api.schemas import AuthCodeRequest, RefreshTokenRequest, TokenResponse, UserResponse
 from core.config import (
     COOKIE_SECURE,
     FRONTEND_URL,
@@ -22,7 +21,8 @@ from core.security import (
     generate_url_safe_token,
     tokens_match,
 )
-from models.db_models import User
+from models.db import User
+from models.schemas import AuthCodeRequest, RefreshTokenRequest, TokenResponse, UserResponse
 from services.authentication.account import delete_account as purge_account
 from services.authentication.auth import github_exchange_code, github_get_user, upsert_user
 from services.authentication.token import (

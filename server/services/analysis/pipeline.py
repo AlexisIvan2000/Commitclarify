@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.clock import utcnow
 from core.exceptions import ConflictError
 from core.language import normalize, text
-from models.db_models import Analysis
+from models.db import Analysis
 from repositories import analysis as analysis_repo
 from services.ai.consistency_agent import run_quality_check, run_readme_check
 from services.ai.security_agent import run_gitignore_check, run_secrets_detection

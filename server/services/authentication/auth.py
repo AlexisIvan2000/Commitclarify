@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import FERNET_KEY, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
 from core.exceptions import AuthError, ExternalServiceError, ValidationError
-from models.db_models import User
+from models.db import User
 from repositories import user as user_repo
 
 logger = logging.getLogger(__name__)

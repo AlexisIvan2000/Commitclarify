@@ -1,7 +1,7 @@
 import uuid
 
 from core.clock import utcnow
-from models.db_models import Analysis, AnalysisResult
+from models.db import Analysis, AnalysisResult
 from services.export.pdf import generate_pdf
 from services.export.serializers import analysis_to_dict, export_filename
 

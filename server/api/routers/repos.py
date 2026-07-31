@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Request
 from api.dependencies import get_current_user
 from core.exceptions import AuthError, ExternalServiceError, ValidationError
 from core.rate_limit import limiter
-from models.db_models import User
+from models.db import User
 from services.authentication.auth import decrypt_github_token
 from services.github.repo_fetcher import fetch_repo_files
 

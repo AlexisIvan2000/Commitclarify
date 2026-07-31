@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.db_models import AuthCode, RefreshToken
+from models.db import AuthCode, RefreshToken
 
 
 def stage_refresh_token(

@@ -6,7 +6,7 @@ import pytest_asyncio
 
 from core.clock import utcnow
 from core.exceptions import ConflictError
-from models.db_models import Analysis, AnalysisResult
+from models.db import Analysis, AnalysisResult
 from services.analysis import pipeline
 
 

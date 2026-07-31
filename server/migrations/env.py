@@ -5,14 +5,14 @@ from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from core.database import db_url
-from models import db_models
+from models import db
 
 config = context.config
 
 if config.config_file_name:
     fileConfig(config.config_file_name)
 
-target_metadata = db_models.Base.metadata
+target_metadata = db.Base.metadata
 
 
 def run_migrations_offline() -> None:

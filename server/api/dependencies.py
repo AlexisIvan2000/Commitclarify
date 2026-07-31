@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.exceptions import AuthError
-from models.db_models import User
+from models.db import User
 from repositories import user as user_repo
 from services.authentication.token import verify_access_token
 

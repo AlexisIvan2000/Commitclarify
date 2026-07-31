@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import delete as sql_delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.db_models import Analysis, AnalysisResult, AuthCode, RefreshToken, User
+from models.db import Analysis, AnalysisResult, AuthCode, RefreshToken, User
 
 
 async def get_by_id(user_id: uuid.UUID, db: AsyncSession) -> User | None:

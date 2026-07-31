@@ -7,11 +7,11 @@ from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_current_user
-from api.schemas import AnalysisDetailResponse, AnalysisResponse, QuotaResponse
 from core.database import get_db
 from core.exceptions import NotFoundError, ValidationError
 from core.language import DEFAULT_LANGUAGE, normalize
-from models.db_models import Analysis, User
+from models.db import Analysis, User
+from models.schemas import AnalysisDetailResponse, AnalysisResponse, QuotaResponse
 from repositories import analysis as analysis_repo
 from services.analysis import pipeline, quota
 from services.authentication.auth import decrypt_github_token

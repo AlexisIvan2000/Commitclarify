@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from core.clock import utcnow
 from core.database import Base, get_db
-from models.db_models import User
+from models.db import User
 from services.authentication.token import create_access_token
 
 for table in Base.metadata.tables.values():

@@ -1,5 +1,5 @@
 from core.language import normalize, text
-from models.db_models import Analysis
+from models.db import Analysis
 
 
 def _labelled(prefix: str, value: str, language: str | None) -> str:

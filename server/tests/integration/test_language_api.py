@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from core.clock import utcnow
 from core.language import DEFAULT_LANGUAGE
-from models.db_models import Analysis
+from models.db import Analysis
 
 
 @pytest.mark.asyncio

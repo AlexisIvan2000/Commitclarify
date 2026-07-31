@@ -3,7 +3,7 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.db_models import User
+from models.db import User
 from repositories import analysis as analysis_repo, user as user_repo
 from services.rag.indexer import delete_collection
 

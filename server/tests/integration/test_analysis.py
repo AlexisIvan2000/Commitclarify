@@ -3,7 +3,7 @@ import pytest
 import pytest_asyncio
 from core.clock import utcnow
 
-from models.db_models import Analysis, AnalysisResult
+from models.db import Analysis, AnalysisResult
 
 
 #  Fixtures 

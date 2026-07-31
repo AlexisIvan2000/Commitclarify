@@ -4,7 +4,7 @@ import pytest
 
 from core.clock import utcnow
 from core.language import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, TEXTS, normalize, text
-from models.db_models import Analysis, AnalysisResult
+from models.db import Analysis, AnalysisResult
 from services.ai.security_agent import _scan_committed_secret_files, run_gitignore_check
 from services.export.pdf import generate_pdf
 from services.export.serializers import analysis_to_dict, aspect_label, status_label

@@ -7,7 +7,7 @@ from sqlalchemy import select
 from core.clock import utcnow
 from core.exceptions import AuthError
 from core.security import OAUTH_STATE_COOKIE, hash_token
-from models.db_models import AuthCode
+from models.db import AuthCode
 from services.authentication.token import consume_auth_code, create_auth_code
 
 GITHUB_USER = {

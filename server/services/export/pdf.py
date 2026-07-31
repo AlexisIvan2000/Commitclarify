@@ -6,7 +6,7 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
 from core.language import normalize, text
-from models.db_models import Analysis
+from models.db import Analysis
 from services.export.serializers import aspect_label, status_label
 
 SEVERITY_COLORS = {

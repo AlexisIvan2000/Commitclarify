@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.clock import start_of_day, utcnow
-from models.db_models import Analysis, AnalysisLog, AnalysisResult
+from models.db import Analysis, AnalysisLog, AnalysisResult
 
 
 async def get_owned(

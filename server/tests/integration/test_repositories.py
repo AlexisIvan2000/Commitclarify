@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import func, select
 
 from core.clock import in_days, utcnow
-from models.db_models import Analysis, AnalysisResult, AuthCode, RefreshToken, User
+from models.db import Analysis, AnalysisResult, AuthCode, RefreshToken, User
 from repositories import analysis as analysis_repo, token as token_repo, user as user_repo
 
 

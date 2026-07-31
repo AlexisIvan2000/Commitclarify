@@ -13,7 +13,7 @@ from core.config import (
 )
 from core.exceptions import AuthError
 from core.security import AUTH_CODE_TTL_SECONDS, generate_token, hash_token
-from models.db_models import RefreshToken
+from models.db import RefreshToken
 from repositories import token as token_repo
 
 logger = logging.getLogger(__name__)
