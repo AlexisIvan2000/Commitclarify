@@ -3,12 +3,12 @@ import uuid
 
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.exceptions import AuthError
 from models.db_models import User
+from repositories import user as user_repo
 from services.authentication.token import verify_access_token
 
 logger = logging.getLogger(__name__)
@@ -29,8 +29,7 @@ async def get_current_user(
     except (ValueError, KeyError, TypeError):
         raise AuthError("Token invalide")
 
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    user = await user_repo.get_by_id(user_id, db)
     if user is None:
         logger.info("Token valide mais utilisateur absent (compte supprime ?)")
         raise AuthError("Utilisateur introuvable")

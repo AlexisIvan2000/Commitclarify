@@ -4,16 +4,15 @@ import uuid
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response, StreamingResponse
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from api.dependencies import get_current_user
+from api.schemas import AnalysisDetailResponse, AnalysisResponse, QuotaResponse
 from core.database import get_db
 from core.exceptions import NotFoundError, ValidationError
 from core.language import DEFAULT_LANGUAGE, normalize
 from models.db_models import Analysis, User
-from models.schemas import AnalysisDetailResponse, AnalysisResponse, QuotaResponse
+from repositories import analysis as analysis_repo
 from services.analysis import pipeline, quota
 from services.authentication.auth import decrypt_github_token
 from services.export.pdf import generate_pdf
@@ -24,21 +23,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analyze", tags=["Analysis"])
 
 
-async def _get_owned_analysis(
+async def _owned_analysis(
     analysis_id: uuid.UUID,
     user: User,
     db: AsyncSession,
     with_results: bool = False,
 ) -> Analysis:
-    query = select(Analysis).where(
-        Analysis.id == analysis_id,
-        Analysis.user_id == user.id,
-    )
-    if with_results:
-        query = query.options(selectinload(Analysis.results))
-
-    result = await db.execute(query)
-    analysis = result.scalar_one_or_none()
+    analysis = await analysis_repo.get_owned(analysis_id, user.id, db, with_results)
     if not analysis:
         raise NotFoundError("Analyse introuvable")
     return analysis
@@ -57,12 +48,7 @@ async def list_analyses(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Analysis)
-        .where(Analysis.user_id == current_user.id)
-        .order_by(Analysis.created_at.desc())
-    )
-    return result.scalars().all()
+    return await analysis_repo.list_for_user(current_user.id, db)
 
 
 @router.delete("/history/all")
@@ -70,14 +56,10 @@ async def delete_all_analyses(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Analysis).where(Analysis.user_id == current_user.id))
-    analyses = result.scalars().all()
-
-    for analysis in analyses:
-        await db.delete(analysis)
+    removed = await analysis_repo.remove_all_for_user(current_user.id, db)
     await db.commit()
 
-    return {"detail": f"{len(analyses)} analyse(s) supprimee(s)"}
+    return {"detail": f"{removed} analyse(s) supprimee(s)"}
 
 
 @router.post("/{repo_full_name:path}")
@@ -93,13 +75,12 @@ async def start_analysis(
 
     await quota.consume(current_user.github_id, db)
 
-    analysis = Analysis(
+    analysis = analysis_repo.stage(
         user_id=current_user.id,
         repo_name=repo_full_name,
-        status="pending",
         language=normalize(language),
+        db=db,
     )
-    db.add(analysis)
     await db.commit()
     await db.refresh(analysis)
 
@@ -116,7 +97,7 @@ async def stream_analysis(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    analysis = await _get_owned_analysis(analysis_id, current_user, db)
+    analysis = await _owned_analysis(analysis_id, current_user, db)
     pipeline.assert_runnable(analysis)
 
     github_token = decrypt_github_token(current_user.access_token)
@@ -137,7 +118,7 @@ async def get_analysis(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await _get_owned_analysis(analysis_id, current_user, db, with_results=True)
+    return await _owned_analysis(analysis_id, current_user, db, with_results=True)
 
 
 @router.delete("/{analysis_id}")
@@ -146,9 +127,10 @@ async def delete_analysis(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    analysis = await _get_owned_analysis(analysis_id, current_user, db)
-    await db.delete(analysis)
+    analysis = await _owned_analysis(analysis_id, current_user, db)
+    await analysis_repo.remove(analysis, db)
     await db.commit()
+
     return {"detail": "Analyse supprimée"}
 
 
@@ -158,7 +140,7 @@ async def export_json(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    analysis = await _get_owned_analysis(analysis_id, current_user, db, with_results=True)
+    analysis = await _owned_analysis(analysis_id, current_user, db, with_results=True)
     filename = export_filename(analysis, "json")
 
     return Response(
@@ -174,7 +156,7 @@ async def export_pdf(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    analysis = await _get_owned_analysis(analysis_id, current_user, db, with_results=True)
+    analysis = await _owned_analysis(analysis_id, current_user, db, with_results=True)
     filename = export_filename(analysis, "pdf")
 
     return Response(

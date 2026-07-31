@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-_CONFIG_PATH = Path(__file__).resolve().parent.parent / "models" / "extensions.json"
+_CONFIG_PATH = Path(__file__).resolve().parent.parent / "models" / "data" / "extensions.json"
 
 with open(_CONFIG_PATH, encoding="utf-8") as _f:
     _CONFIG = json.load(_f)

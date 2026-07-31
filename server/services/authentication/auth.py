@@ -3,12 +3,12 @@ from functools import lru_cache
 
 import httpx
 from cryptography.fernet import Fernet, InvalidToken
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import FERNET_KEY, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
 from core.exceptions import AuthError, ExternalServiceError, ValidationError
 from models.db_models import User
+from repositories import user as user_repo
 
 logger = logging.getLogger(__name__)
 
@@ -80,8 +80,7 @@ async def github_get_user(access_token: str) -> dict:
 async def upsert_user(github_user: dict, access_token: str, db: AsyncSession) -> User:
     encrypted_token = _fernet().encrypt(access_token.encode()).decode()
 
-    result = await db.execute(select(User).where(User.github_id == github_user["id"]))
-    user = result.scalars().first()
+    user = await user_repo.get_by_github_id(github_user["id"], db)
 
     if user:
         logger.info("Utilisateur existant mis a jour: %s", github_user["login"])
@@ -100,7 +99,7 @@ async def upsert_user(github_user: dict, access_token: str, db: AsyncSession) ->
             email=github_user.get("email"),
             access_token=encrypted_token,
         )
-        db.add(user)
+        user_repo.stage(user, db)
 
     await db.commit()
     await db.refresh(user)

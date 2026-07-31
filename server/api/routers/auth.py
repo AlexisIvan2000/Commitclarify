@@ -1,13 +1,12 @@
-import asyncio
 import logging
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
-from sqlalchemy import delete as sql_delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_current_user
+from api.schemas import AuthCodeRequest, RefreshTokenRequest, TokenResponse, UserResponse
 from core.config import (
     COOKIE_SECURE,
     FRONTEND_URL,
@@ -23,8 +22,8 @@ from core.security import (
     generate_url_safe_token,
     tokens_match,
 )
-from models.db_models import Analysis, AnalysisResult, AuthCode, RefreshToken, User
-from models.schemas import AuthCodeRequest, RefreshTokenRequest, TokenResponse, UserResponse
+from models.db_models import User
+from services.authentication.account import delete_account as purge_account
 from services.authentication.auth import github_exchange_code, github_get_user, upsert_user
 from services.authentication.token import (
     consume_auth_code,
@@ -34,7 +33,6 @@ from services.authentication.token import (
     get_active_refresh_token,
     revoke_refresh_token,
 )
-from services.rag.indexer import delete_collection
 
 logger = logging.getLogger(__name__)
 
@@ -168,41 +166,5 @@ async def delete_account(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Analysis.id, Analysis.repo_name, Analysis.repo_sha).where(
-            Analysis.user_id == current_user.id
-        )
-    )
-    analyses = result.all()
-    analysis_ids = [row.id for row in analyses]
-
-    if analysis_ids:
-        await db.execute(
-            sql_delete(AnalysisResult).where(AnalysisResult.analysis_id.in_(analysis_ids))
-        )
-
-    await db.execute(sql_delete(RefreshToken).where(RefreshToken.user_id == current_user.id))
-    await db.execute(sql_delete(AuthCode).where(AuthCode.user_id == current_user.id))
-    await db.execute(sql_delete(Analysis).where(Analysis.user_id == current_user.id))
-
-    user_id = str(current_user.id)
-    login = current_user.login
-    github_id = current_user.github_id
-
-    await db.delete(current_user)
-    await db.commit()
-
-    await _purge_vector_collections(user_id, analyses)
-
-    logger.info("Compte supprime: user=%s (github_id=%s)", login, github_id)
+    await purge_account(current_user, db)
     return {"detail": "Compte supprime"}
-
-
-async def _purge_vector_collections(user_id: str, analyses) -> None:
-    for row in analyses:
-        if not row.repo_sha:
-            continue
-        try:
-            await asyncio.to_thread(delete_collection, user_id, row.repo_name, row.repo_sha)
-        except Exception as exc:
-            logger.warning("Purge collection %s echouee: %s", row.repo_name, exc)

@@ -1,18 +1,18 @@
 import asyncio
 import json
 import logging
-import uuid
+
 from datetime import timedelta
 from pathlib import Path
 from typing import AsyncIterator
 
-from sqlalchemy import delete as sql_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.clock import utcnow
 from core.exceptions import ConflictError
 from core.language import normalize, text
-from models.db_models import Analysis, AnalysisResult
+from models.db_models import Analysis
+from repositories import analysis as analysis_repo
 from services.ai.consistency_agent import run_quality_check, run_readme_check
 from services.ai.security_agent import run_gitignore_check, run_secrets_detection
 from services.github.repo_fetcher import fetch_repo_files
@@ -175,17 +175,4 @@ async def _labelled(step: str, coro) -> tuple[str, dict]:
 
 
 async def _persist_results(analysis: Analysis, results: dict, db: AsyncSession) -> None:
-    await db.execute(
-        sql_delete(AnalysisResult).where(AnalysisResult.analysis_id == analysis.id)
-    )
-
-    for step, result in results.items():
-        db.add(AnalysisResult(
-            id=uuid.uuid4(),
-            analysis_id=analysis.id,
-            aspect=step,
-            issues=result.get("issues", []),
-            recommendations=result.get("recommendations", []),
-            status=result.get("status", "clean"),
-            created_at=utcnow(),
-        ))
+    await analysis_repo.replace_results(analysis.id, results, db)
