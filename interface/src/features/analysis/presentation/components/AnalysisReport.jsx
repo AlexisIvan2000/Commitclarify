@@ -20,7 +20,7 @@ function AnalysisReport({ analysis, results, pendingSteps = [], action = null })
             <GitCommit size={14} />
             {analysis?.completed_at && formatDateTime(analysis.completed_at)}
             {sha && <code>{sha}</code>}
-            {files?.read !== null && files?.tracked !== null && (
+            {files && (
               <span>
                 {t.analysis.filesRead
                   .replace('{read}', files.read.toLocaleString())

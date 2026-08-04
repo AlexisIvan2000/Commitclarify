@@ -13,14 +13,9 @@ import useAnalysisDetail from '../provider/useAnalysisDetail'
 import useDeepenStream, { STREAM_PHASES } from '../provider/useDeepenStream'
 import useQuota from '../provider/useQuota'
 import useReportExport from '../provider/useReportExport'
+import { resultsByAspect } from '../../domain/report'
 import { canDeepen } from '../../domain/status'
 import { DEEPEN_STEPPER } from '../../domain/steps'
-
-function resultsByAspect(analysis) {
-  const map = {}
-  for (const result of analysis?.results || []) map[result.aspect] = result
-  return map
-}
 
 function AnalysisDetailPage() {
   const t = useTranslation()

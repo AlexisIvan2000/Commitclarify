@@ -8,6 +8,7 @@ import AnalysisStepper from '../components/AnalysisStepper'
 import AppNavbar from '../components/AppNavbar'
 import useQuota from '../provider/useQuota'
 import useScanStream, { STREAM_PHASES } from '../provider/useScanStream'
+import { hasResults, resultsByAspect } from '../../domain/report'
 import { ANALYSIS_STEPS, SCAN_STEPPER } from '../../domain/steps'
 
 function AnalysisStreamPage() {
@@ -57,7 +58,7 @@ function AnalysisStreamPage() {
         {phase === STREAM_PHASES.done && (
           <AnalysisReport
             analysis={analysis || { repo_name: repoFullName }}
-            results={results}
+            results={hasResults(analysis) ? resultsByAspect(analysis) : results}
             pendingSteps={pendingSteps}
             action={
               <button

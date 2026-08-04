@@ -29,12 +29,12 @@ export function coverageGaps(coverage) {
 }
 
 export function analyzedFiles(coverage) {
-  if (!coverage) return null
+  const read = coverage?.fetched_files
+  const tracked = coverage?.tracked_files
 
-  return {
-    read: coverage.fetched_files ?? null,
-    tracked: coverage.tracked_files ?? null,
-  }
+  if (!Number.isInteger(read) || !Number.isInteger(tracked)) return null
+
+  return { read, tracked }
 }
 
 export function shortSha(coverage, analysis) {
