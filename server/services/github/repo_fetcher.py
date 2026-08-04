@@ -26,11 +26,16 @@ EXCLUDED_BY_PATH = "excluded_by_path"
 EXCLUDED_BY_EXTENSION = "excluded_by_extension"
 SKIPPED_TOO_LARGE = "skipped_too_large"
 
-FETCH_HTTP_ERROR = "fetch_http_error"
-FETCH_EMPTY_BODY = "fetch_empty_body"
-FETCH_EXCEPTION = "fetch_exception"
+EMPTY_FILES = "empty_files"
 SKIPPED_TOO_MANY_LINES = "skipped_too_many_lines"
 SKIPPED_MINIFIED = "skipped_minified"
+
+FETCH_HTTP_ERROR = "fetch_http_error"
+FETCH_CONTENT_UNAVAILABLE = "fetch_content_unavailable"
+FETCH_UNEXPECTED_PAYLOAD = "fetch_unexpected_payload"
+FETCH_EXCEPTION = "fetch_exception"
+
+DELIBERATE_SKIPS = frozenset({EMPTY_FILES, SKIPPED_TOO_MANY_LINES, SKIPPED_MINIFIED})
 
 
 def _rejection_reason(path: str, size: int) -> Optional[str]:
@@ -101,6 +106,18 @@ async def get_repo_tree(
     }
 
 
+def _empty_payload_reason(payload: dict) -> str:
+    encoding = payload.get("encoding")
+
+    if encoding == "none":
+        return FETCH_CONTENT_UNAVAILABLE
+
+    if encoding == "base64" and payload.get("size") == 0:
+        return EMPTY_FILES
+
+    return FETCH_UNEXPECTED_PAYLOAD
+
+
 async def _fetch_file_content(
     client: httpx.AsyncClient,
     owner: str,
@@ -119,9 +136,10 @@ async def _fetch_file_content(
             )
             return None, FETCH_HTTP_ERROR
 
-        encoded = response.json().get("content", "")
+        payload = response.json()
+        encoded = payload.get("content", "")
         if not encoded:
-            return None, FETCH_EMPTY_BODY
+            return None, _empty_payload_reason(payload)
 
         content = base64.b64decode(encoded.replace("\n", "")).decode("utf-8", errors="replace")
 
@@ -187,12 +205,19 @@ async def fetch_repo_files(
     return _repo_data(repo_sha, results, tree, failures)
 
 
-def _repo_data(repo_sha: str, files: list[dict], tree: dict, failures: Counter) -> dict:
+def _repo_data(repo_sha: str, files: list[dict], tree: dict, outcomes: Counter) -> dict:
     eligible_count = len(tree["files"])
     readme = next(
         (f for f in files if Path(f["path"]).name.lower() == "readme.md"),
         None,
     )
+
+    excluded = Counter(tree["exclusions"])
+    failures = Counter()
+
+    for reason, count in outcomes.items():
+        target = excluded if reason in DELIBERATE_SKIPS else failures
+        target[reason] += count
 
     return {
         "sha":           repo_sha,
@@ -205,7 +230,7 @@ def _repo_data(repo_sha: str, files: list[dict], tree: dict, failures: Counter) 
             "fetched":         len(files),
             "skipped":         eligible_count - len(files),
             "tracked":         len(tree["tracked_paths"]),
-            "excluded":        tree["exclusions"],
+            "excluded":        dict(excluded),
             "fetch_failures":  dict(failures),
             "capped_at_limit": tree["capped_at_limit"],
         },

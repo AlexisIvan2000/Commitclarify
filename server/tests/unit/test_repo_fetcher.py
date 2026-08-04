@@ -112,6 +112,106 @@ async def test_missing_repository_raises():
         await get_repo_tree("owner", "repo", "token")
 
 
+FULL_TREE = {
+    "truncated": False,
+    "tree": [
+        {"path": "app.py", "type": "blob", "sha": "a", "size": 10},
+        {"path": "core/__init__.py", "type": "blob", "sha": "b", "size": 0},
+        {"path": "huge.py", "type": "blob", "sha": "c", "size": 10},
+        {"path": "gone.py", "type": "blob", "sha": "d", "size": 10},
+        {"path": "assets/logo.png", "type": "blob", "sha": "e", "size": 10},
+    ],
+}
+
+CONTENTS = {
+    "app.py": (200, {"encoding": "base64", "size": 10, "content": "cHJpbnQoMSk="}),
+    "core/__init__.py": (200, {"encoding": "base64", "size": 0, "content": ""}),
+    "huge.py": (200, {"encoding": "none", "size": 2_000_000, "content": ""}),
+    "gone.py": (404, {}),
+}
+
+
+class _FakeApi:
+    def __init__(self):
+        self.calls = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_):
+        return False
+
+    async def get(self, url, **kwargs):
+        self.calls.append(url)
+        response = MagicMock()
+        response.headers = {}
+
+        if "/commits/" in url:
+            response.status_code = 200
+            response.json.return_value = {"sha": "deadbeef"}
+        elif "/git/trees/" in url:
+            response.status_code = 200
+            response.json.return_value = FULL_TREE
+        else:
+            path = url.split("/contents/", 1)[1]
+            status, payload = CONTENTS[path]
+            response.status_code = status
+            response.json.return_value = payload
+
+        return response
+
+
+@pytest.fixture
+def fake_api():
+    api = _FakeApi()
+    with (
+        patch("services.github.client.httpx.AsyncClient", lambda *_, **__: api),
+        patch("services.github.repo_fetcher.httpx.AsyncClient", lambda *_, **__: api),
+    ):
+        yield api
+
+
+@pytest.mark.asyncio
+async def test_empty_files_are_not_counted_as_fetch_failures(fake_api):
+    from services.github.repo_fetcher import fetch_repo_files
+
+    data = await fetch_repo_files("owner", "repo", "token")
+    stats = data["stats"]
+
+    assert stats["excluded"]["empty_files"] == 1
+    assert "empty_files" not in stats["fetch_failures"]
+
+
+@pytest.mark.asyncio
+async def test_real_errors_stay_in_fetch_failures(fake_api):
+    from services.github.repo_fetcher import fetch_repo_files
+
+    stats = (await fetch_repo_files("owner", "repo", "token"))["stats"]
+
+    assert stats["fetch_failures"] == {
+        "fetch_http_error": 1,
+        "fetch_content_unavailable": 1,
+    }
+
+
+@pytest.mark.asyncio
+async def test_every_tracked_file_is_accounted_for_exactly_once(fake_api):
+    from services.github.repo_fetcher import fetch_repo_files
+
+    data = await fetch_repo_files("owner", "repo", "token")
+    stats = data["stats"]
+
+    accounted = (
+        stats["fetched"]
+        + sum(stats["excluded"].values())
+        + sum(stats["fetch_failures"].values())
+    )
+
+    assert accounted == stats["tracked"] == 5
+    assert stats["fetched"] == 1
+    assert [entry["path"] for entry in data["files"]] == ["app.py"]
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("status,expected", [
     (401, "invalide ou expire"),
