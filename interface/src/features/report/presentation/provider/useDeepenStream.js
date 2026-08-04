@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { messageOf } from '@core/network/errors'
-import { fetchAnalysis, openDeepenStream } from '../../data/analysisApi'
+import { fetchAnalysis, openDeepenStream } from '@features/scan/data/analysisApi'
 import {
   STREAM_PHASES,
   TERMINAL_EVENTS,
   emptyStreamState,
   reduceEvent,
-} from './streamEvents'
+} from '@features/scan/presentation/provider/streamEvents'
 
 export { STREAM_PHASES }
 

@@ -5,8 +5,8 @@ import Spinner from '@core/components/Spinner'
 import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
 import { formatMonthYear } from '@core/utils/date'
-import useQuota from '@features/analysis/presentation/provider/useQuota'
-import useReportLanguage from '@features/analysis/presentation/provider/useReportLanguage'
+import useQuota from '@features/scan/presentation/provider/useQuota'
+import useReportLanguage from '@features/scan/presentation/provider/useReportLanguage'
 import useAuth from '../provider/useAuth'
 
 function AccountPage() {

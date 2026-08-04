@@ -1,6 +1,6 @@
 import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
-import { coverageGaps } from '../../domain/coverage'
+import { coverageGaps } from '@features/scan/domain/coverage'
 
 function CoverageNote({ coverage }) {
   const t = useTranslation()

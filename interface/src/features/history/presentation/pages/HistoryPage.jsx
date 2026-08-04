@@ -7,7 +7,7 @@ import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
 import { formatShortDateTime } from '@core/utils/date'
 import useAnalysisHistory from '../provider/useAnalysisHistory'
-import { isRunning, isViewable, statusConfig } from '../../domain/status'
+import { isRunning, isViewable, statusConfig } from '@features/scan/domain/status'
 
 function HistoryPage() {
   const t = useTranslation()

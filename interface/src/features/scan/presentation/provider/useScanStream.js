@@ -56,7 +56,7 @@ export default function useScanStream(repoFullName, language, onStarted) {
       }
     }
 
-    if (!started.current) {
+    if (!started.current && repoFullName) {
       started.current = true
       run()
     }

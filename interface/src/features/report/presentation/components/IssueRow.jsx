@@ -1,7 +1,7 @@
 import CodeHighlight from '@core/components/CodeHighlight'
 import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
-import { severityColor, verdictLabel } from '../../domain/issue'
+import { severityColor, verdictLabel } from '@features/scan/domain/issue'
 
 function IssueRow({ issue }) {
   const t = useTranslation()

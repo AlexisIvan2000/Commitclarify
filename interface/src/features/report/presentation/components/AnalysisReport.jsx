@@ -1,8 +1,8 @@
 import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
 import { formatDateTime } from '@core/utils/date'
-import { analyzedFiles, shortSha } from '../../domain/coverage'
-import { ANALYSIS_STEPS } from '../../domain/steps'
+import { analyzedFiles, shortSha } from '@features/scan/domain/coverage'
+import { ANALYSIS_STEPS } from '@features/scan/domain/steps'
 import AnalysisResultCard from './AnalysisResultCard'
 
 function AnalysisReport({ analysis, results, pendingSteps = [], action = null }) {

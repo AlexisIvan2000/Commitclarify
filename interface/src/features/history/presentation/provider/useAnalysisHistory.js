@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { messageOf } from '@core/network/errors'
 import useAsyncData from '@core/utils/useAsyncData'
-import { deleteAllAnalyses, deleteAnalysis, fetchHistory } from '../../data/analysisApi'
+import { deleteAllAnalyses, deleteAnalysis, fetchHistory } from '@features/scan/data/analysisApi'
 
 export default function useAnalysisHistory() {
   const load = useCallback(() => fetchHistory(), [])

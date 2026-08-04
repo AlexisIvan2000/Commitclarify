@@ -4,8 +4,8 @@ import ErrorState from '@core/components/ErrorState'
 import Spinner from '@core/components/Spinner'
 import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
-import useAnalysisHistory from '../provider/useAnalysisHistory'
-import { isViewable } from '../../domain/status'
+import useAnalysisHistory from '@features/history/presentation/provider/useAnalysisHistory'
+import { isViewable } from '@features/scan/domain/status'
 
 function LatestReportPage() {
   const t = useTranslation()

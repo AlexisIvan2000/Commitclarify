@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { messageOf } from '@core/network/errors'
 import { saveBlob } from '@core/utils/download'
-import { downloadReport } from '../../data/analysisApi'
+import { downloadReport } from '@features/scan/data/analysisApi'
 
 export default function useReportExport(analysisId) {
   const [pendingFormat, setPendingFormat] = useState(null)

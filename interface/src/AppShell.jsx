@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import Sidebar from '@core/components/Sidebar'
-import useQuota from '@features/analysis/presentation/provider/useQuota'
+import useQuota from '@features/scan/presentation/provider/useQuota'
 
 function AppShell() {
   const { quota } = useQuota()

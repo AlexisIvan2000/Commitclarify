@@ -6,7 +6,7 @@ import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
 import RepoCard from '../components/RepoCard'
 import RepoFilters from '../components/RepoFilters'
-import useReportLanguage from '../provider/useReportLanguage'
+import useReportLanguage from '@features/scan/presentation/provider/useReportLanguage'
 import useRepos from '../provider/useRepos'
 
 function DashboardPage() {

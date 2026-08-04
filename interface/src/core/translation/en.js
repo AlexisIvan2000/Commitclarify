@@ -26,6 +26,7 @@ const en = {
     fullReport: 'View the full report',
     history: 'History',
     repos: 'Repos',
+    goToRepos: 'Pick a repository',
     all: 'All',
     search: 'Search...',
   },
@@ -162,7 +163,12 @@ const en = {
       error: 'Error',
     },
     title: 'Analysis of',
-    reportTitle: 'Report:',
+    scanTitle: 'Scan running',
+    scanEmptyTitle: 'No scan running',
+    scanEmptyText: 'Pick a repository to start a scan. Scanning is free, deterministic and calls no AI.',
+    reportTitle: 'Report',
+    reportEmptyTitle: 'No report yet',
+    reportEmptyText: 'Run a first scan: its report will show up here and stay available from the history.',
     issues: 'Issues',
     recommendations: 'Recommendations',
     clean: 'No issue found.',
@@ -185,6 +191,15 @@ const en = {
     reportLanguage: 'Report language',
     reportLanguageHint: 'Reports are frozen in the language picked when they are started.',
     generatedIn: 'Report generated in',
+  },
+
+  account: {
+    title: 'Account',
+    profile: 'Profile',
+    email: 'Email',
+    preferences: 'Preferences',
+    danger: 'Danger zone',
+    dangerHint: 'Deleting the account permanently removes your profile, your scans and their reports. It does not reset today\'s AI triage quota.',
   },
 
   notFound: {

@@ -6,7 +6,7 @@ import typescript from 'highlight.js/lib/languages/typescript'
 import json from 'highlight.js/lib/languages/json'
 import bash from 'highlight.js/lib/languages/bash'
 import yaml from 'highlight.js/lib/languages/yaml'
-import 'highlight.js/styles/github-dark-dimmed.css'
+import 'highlight.js/styles/github.css'
 import { guessLanguage } from '../utils/language'
 
 hljs.registerLanguage('javascript', javascript)

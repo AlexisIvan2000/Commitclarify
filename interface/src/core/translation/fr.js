@@ -26,6 +26,7 @@ const fr = {
     fullReport: 'Voir le rapport complet',
     history: 'Historique',
     repos: 'Repos',
+    goToRepos: 'Choisir un dépôt',
     all: 'Tous',
     search: 'Rechercher...',
   },
@@ -162,7 +163,12 @@ const fr = {
       error: 'Erreur',
     },
     title: 'Analyse de',
-    reportTitle: 'Rapport :',
+    scanTitle: 'Scan en cours',
+    scanEmptyTitle: 'Aucun scan en cours',
+    scanEmptyText: 'Choisissez un dépôt pour lancer un scan. Le scan est gratuit, déterministe et n\'appelle aucune IA.',
+    reportTitle: 'Rapport',
+    reportEmptyTitle: 'Aucun rapport disponible',
+    reportEmptyText: 'Lancez un premier scan : son rapport apparaîtra ici et restera consultable depuis l\'historique.',
     issues: 'Problèmes',
     recommendations: 'Recommandations',
     clean: 'Aucun problème détecté.',
@@ -185,6 +191,15 @@ const fr = {
     reportLanguage: 'Langue du rapport',
     reportLanguageHint: 'Les rapports sont figés dans la langue choisie au lancement.',
     generatedIn: 'Rapport généré en',
+  },
+
+  account: {
+    title: 'Compte',
+    profile: 'Profil',
+    email: 'Email',
+    preferences: 'Préférences',
+    danger: 'Zone sensible',
+    dangerHint: 'La suppression du compte efface définitivement votre profil, vos scans et leurs rapports. Elle ne remet pas à zéro le quota de tris IA du jour.',
   },
 
   notFound: {
