@@ -12,7 +12,7 @@ RESULT_DEFINING_MODULES = sorted(
     if path.name != "__init__.py"
 )
 
-EXPECTED_VERSION_AND_DIGEST = (3, "c3a3972d0c79e315")
+EXPECTED_VERSION_AND_DIGEST = (4, "a9c30bfd2d35d3b5")
 
 BUMP_INSTRUCTIONS = (
     "Ce qui determine le resultat d'un scan a change.\n"

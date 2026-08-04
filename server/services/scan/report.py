@@ -1,8 +1,10 @@
 import hashlib
 
-SCAN_VERSION = 3
+SCAN_VERSION = 4
 
 SEVERITY_ORDER = ("critical", "high", "medium", "low", "info")
+
+INVOLUNTARY_GAPS = ("tree_truncated", "capped_over_limit", "fetch_failures")
 
 LEGACY_SEVERITIES = {"info": "low"}
 
@@ -129,6 +131,19 @@ def to_issue(finding: dict) -> dict:
         "occurrences": finding["occurrences"],
         "locations": finding["locations"],
     }
+
+
+def coverage_is_complete(coverage: dict | None) -> bool:
+    if not coverage:
+        return True
+
+    return not any(coverage.get(gap) for gap in INVOLUNTARY_GAPS)
+
+
+def downgrade_clean_to_partial(axes: dict) -> None:
+    for result in axes.values():
+        if result["status"] == "clean":
+            result["status"] = "partial"
 
 
 def severity_counts(findings: list[dict]) -> dict:

@@ -37,7 +37,11 @@ ALL_SOURCE_EXTENSIONS = {
 }
 
 
-async def scan_quality(files: list[dict], language: str = DEFAULT_LANGUAGE) -> dict:
+async def scan_quality(
+    files: list[dict],
+    language: str = DEFAULT_LANGUAGE,
+    tracked_paths: list[str] | None = None,
+) -> dict:
     language = normalize(language)
 
     ruff_issues, eslint_issues = await asyncio.gather(
@@ -48,7 +52,13 @@ async def scan_quality(files: list[dict], language: str = DEFAULT_LANGUAGE) -> d
 
     complexity_findings, scores = _complexity_findings(files, language)
     unpinned = _unpinned_requirements(files)
-    metrics = _metrics(files, scores, len(linter_issues), _has_pinned_requirements(files, unpinned))
+    metrics = _metrics(
+        files,
+        tracked_paths,
+        scores,
+        len(linter_issues),
+        _has_pinned_requirements(files, unpinned),
+    )
 
     findings = (
         _linter_findings(linter_issues)
@@ -149,52 +159,81 @@ def _complexity_findings(files: list[dict], language: str) -> tuple[list[dict], 
 
 def _metrics(
     files: list[dict],
+    tracked_paths: list[str] | None,
     scores: list[int],
     linter_issues: int,
     pinned_requirements: bool,
 ) -> dict:
-    paths = [entry.get("path", "") for entry in files if entry.get("path")]
-    detected = ecosystems.detect(paths)
+    sample_paths = [entry.get("path", "") for entry in files if entry.get("path")]
+    repository_paths = sample_paths if tracked_paths is None else tracked_paths
+    detected = ecosystems.detect(repository_paths)
+    ci_paths = [path for path in repository_paths if is_ci_path(path)]
 
     return {
         "ecosystems": sorted(detected),
-        **_file_counts(paths),
-        "missing_lockfiles": ecosystems.missing_lockfiles(paths, detected),
+        "sample_covers_repository": len(sample_paths) == len(repository_paths),
+        **_sample_counts(sample_paths),
+        "has_sources": any(_is_source(path) for path in repository_paths),
+        "has_tests": any(is_test_path(path) for path in repository_paths),
+        "ci_files": ci_paths,
+        "has_ci": bool(ci_paths),
+        "missing_lockfiles": ecosystems.missing_lockfiles(repository_paths, detected),
         "pinned_requirements": pinned_requirements,
         "linter_issues": linter_issues,
-        "complexity": _complexity_metrics(scores),
+        "complexity": _complexity_metrics(scores, sample_paths),
     }
 
 
-def _file_counts(paths: list[str]) -> dict:
-    source_paths = [
-        path for path in paths
-        if PurePosixPath(path).suffix.lower() in ALL_SOURCE_EXTENSIONS
-    ]
+def _is_source(path: str) -> bool:
+    return PurePosixPath(path).suffix.lower() in ALL_SOURCE_EXTENSIONS
+
+
+def _sample_counts(sample_paths: list[str]) -> dict:
+    source_paths = [path for path in sample_paths if _is_source(path)]
     test_paths = [path for path in source_paths if is_test_path(path)]
-    ci_paths = [path for path in paths if is_ci_path(path)]
     production_count = len(source_paths) - len(test_paths)
 
     return {
-        "source_files": len(source_paths),
-        "test_files": len(test_paths),
-        "test_ratio": round(len(test_paths) / production_count, 2) if production_count else 0.0,
-        "ci_files": ci_paths,
-        "has_ci": bool(ci_paths),
+        "source_files_in_sample": len(source_paths),
+        "test_files_in_sample": len(test_paths),
+        "test_ratio_in_sample": (
+            round(len(test_paths) / production_count, 2) if production_count else None
+        ),
     }
 
 
-def _complexity_metrics(scores: list[int]) -> dict:
-    over_threshold = [score for score in scores if score > COMPLEXITY_THRESHOLD]
+def _complexity_metrics(scores: list[int], sample_paths: list[str]) -> dict:
+    suffixes = {PurePosixPath(path).suffix.lower() for path in sample_paths}
+    analyzed = ["python"] if suffixes & PYTHON_EXTENSIONS else []
+
+    if not analyzed:
+        return {
+            "threshold": COMPLEXITY_THRESHOLD,
+            "analyzed_functions": 0,
+            "over_threshold": None,
+            "max": None,
+            "average": None,
+            "analyzed_languages": [],
+            "unanalyzed_languages": _unanalyzed_languages(suffixes),
+        }
 
     return {
         "threshold": COMPLEXITY_THRESHOLD,
         "analyzed_functions": len(scores),
-        "over_threshold": len(over_threshold),
-        "max": max(scores, default=0),
-        "average": round(sum(scores) / len(scores), 1) if scores else 0.0,
-        "languages": ["python"],
+        "over_threshold": sum(1 for score in scores if score > COMPLEXITY_THRESHOLD),
+        "max": max(scores, default=None),
+        "average": round(sum(scores) / len(scores), 1) if scores else None,
+        "analyzed_languages": analyzed,
+        "unanalyzed_languages": _unanalyzed_languages(suffixes),
     }
+
+
+def _unanalyzed_languages(suffixes: set[str]) -> list[str]:
+    return sorted(
+        ecosystem
+        for ecosystem, extensions in ecosystems.SOURCE_EXTENSIONS.items()
+        if ecosystem != "python" and suffixes & extensions
+    )
 
 
 def _pinning_ratio(content: str) -> tuple[int, int]:
@@ -267,17 +306,21 @@ def _metric_findings(
 ) -> list[dict]:
     findings = []
 
-    if metrics["source_files"] and not metrics["test_files"]:
+    if metrics["has_sources"] and not metrics["has_tests"]:
         findings.append(make_finding(
             AXIS,
             "quality.no_tests",
             "medium",
             text("scan.quality.no_tests.title", language),
-            text("scan.quality.no_tests.description", language, count=metrics["source_files"]),
+            text(
+                "scan.quality.no_tests.description",
+                language,
+                count=metrics["source_files_in_sample"],
+            ),
             source="metrics",
         ))
 
-    if metrics["source_files"] and not metrics["has_ci"]:
+    if metrics["has_sources"] and not metrics["has_ci"]:
         findings.append(make_finding(
             AXIS,
             "quality.no_ci",

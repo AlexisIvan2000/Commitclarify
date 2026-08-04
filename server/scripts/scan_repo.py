@@ -36,7 +36,7 @@ def build_coverage(repo_data: dict) -> dict:
         "excluded": stats["excluded"],
         "fetch_failures": stats["fetch_failures"],
         "fetched_detail": stats["fetched_detail"],
-        "capped_at_limit": stats["capped_at_limit"],
+        "capped_over_limit": stats["capped_over_limit"],
         "tree_truncated": repo_data["truncated"],
     }
 
@@ -48,8 +48,13 @@ def print_summary(scan: dict) -> None:
         f"couverture: {coverage['fetched_files']}/{coverage['eligible_files']} fichiers analyses "
         f"sur {coverage['tracked_files']} versionnes"
         + ("  [ARBRE TRONQUE PAR GITHUB]" if coverage["tree_truncated"] else "")
-        + ("  [PLAFOND MAX_REPO_FILES ATTEINT]" if coverage["capped_at_limit"] else "")
+        + (
+            f"  [{coverage['capped_over_limit']} FICHIERS AU-DELA DU PLAFOND]"
+            if coverage["capped_over_limit"] else ""
+        )
     )
+    if not scan["complete"]:
+        print("  couverture incomplete : les axes sans probleme sont marques 'partial'")
     for reason, count in sorted(coverage["excluded"].items()):
         print(f"  ecartes  {reason:26} {count}")
     for reason, count in sorted(coverage["fetch_failures"].items()):

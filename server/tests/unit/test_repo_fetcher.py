@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.file_rules import MAX_REPO_FILES
 from services.github.client import GitHubError
 from services.github.repo_fetcher import get_repo_latest_sha, get_repo_tree
 
@@ -103,7 +104,7 @@ async def test_truncated_flag_is_propagated():
 
     assert tree["truncated"] is True
     assert tree["files"] == []
-    assert tree["capped_at_limit"] is False
+    assert tree["capped_over_limit"] == 0
 
 
 @pytest.mark.asyncio
@@ -222,6 +223,57 @@ async def test_every_tracked_file_is_accounted_for_exactly_once(fake_api):
     assert accounted == stats["tracked"] == 5
     assert stats["fetched"] == 2
     assert [entry["path"] for entry in data["files"]] == ["app.py", "core/__init__.py"]
+
+
+CAPPED_TREE = {
+    "truncated": False,
+    "tree": [
+        {"path": f"src/module{index}.py", "type": "blob", "sha": str(index), "size": 10}
+        for index in range(MAX_REPO_FILES + 5)
+    ],
+}
+
+
+class _CappedApi(_FakeApi):
+    async def get(self, url, **kwargs):
+        self.calls.append(url)
+        response = MagicMock()
+        response.headers = {}
+        response.status_code = 200
+
+        if "/commits/" in url:
+            response.json.return_value = {"sha": "deadbeef"}
+        elif "/git/trees/" in url:
+            response.json.return_value = CAPPED_TREE
+        else:
+            response.json.return_value = {
+                "encoding": "base64", "size": 10, "content": "cHJpbnQoMSk=",
+            }
+
+        return response
+
+
+@pytest.mark.asyncio
+async def test_files_above_the_cap_are_counted_not_lost():
+    from services.github.repo_fetcher import fetch_repo_files
+
+    api = _CappedApi()
+    with (
+        patch("services.github.client.httpx.AsyncClient", lambda *_, **__: api),
+        patch("services.github.repo_fetcher.httpx.AsyncClient", lambda *_, **__: api),
+    ):
+        stats = (await fetch_repo_files("owner", "repo", "token"))["stats"]
+
+    accounted = (
+        stats["fetched"]
+        + sum(stats["excluded"].values())
+        + sum(stats["fetch_failures"].values())
+    )
+
+    assert stats["capped_over_limit"] == 5
+    assert stats["excluded"]["capped_over_limit"] == 5
+    assert stats["fetched"] == MAX_REPO_FILES
+    assert accounted == stats["tracked"] == MAX_REPO_FILES + 5
 
 
 @pytest.mark.asyncio

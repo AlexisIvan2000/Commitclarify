@@ -5,7 +5,13 @@ from core.language import DEFAULT_LANGUAGE, normalize
 from services.scan.documentation import scan_documentation
 from services.scan.gitignore import scan_gitignore
 from services.scan.quality import scan_quality
-from services.scan.report import SCAN_VERSION, severity_counts, to_issue
+from services.scan.report import (
+    SCAN_VERSION,
+    coverage_is_complete,
+    downgrade_clean_to_partial,
+    severity_counts,
+    to_issue,
+)
 from services.scan.secrets import scan_secrets
 
 logger = logging.getLogger(__name__)
@@ -21,27 +27,32 @@ async def run_scan(
 ) -> dict:
     language = normalize(language)
 
-    quality_task = asyncio.create_task(scan_quality(files, language))
+    quality_task = asyncio.create_task(scan_quality(files, language, tracked_paths))
 
     results = {
         "secrets_detection": scan_secrets(files, language),
         "gitignore_check": scan_gitignore(files, language, tracked_paths),
-        "readme_check": scan_documentation(files, language),
+        "readme_check": scan_documentation(files, language, tracked_paths),
     }
     results["quality_check"] = await quality_task
 
     axes = {axis: results[axis] for axis in AXES}
+    complete = coverage_is_complete(coverage)
+    if not complete:
+        downgrade_clean_to_partial(axes)
+
     findings = all_findings(axes)
 
     logger.info(
-        "Scan termine: %d findings sur %d fichiers",
-        len(findings), len(files),
+        "Scan termine: %d findings sur %d fichiers (couverture complete=%s)",
+        len(findings), len(files), complete,
     )
 
     return {
         "scan_version": SCAN_VERSION,
         "language": language,
         "coverage": coverage or {},
+        "complete": complete,
         "axes": axes,
         "summary": {
             "findings": len(findings),

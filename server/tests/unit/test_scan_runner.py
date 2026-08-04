@@ -38,6 +38,55 @@ async def test_coverage_is_reported_when_the_caller_provides_it():
     assert (await run_scan(FILES))["coverage"] == {}
 
 
+CLEAN_FILES = [
+    {"path": ".gitignore", "content": ".env\n__pycache__/\n.venv/\n"},
+    {"path": "README.md", "content": "# App\n"},
+    {"path": "app.py", "content": "def add(a, b):\n    return a + b\n"},
+    {"path": "tests/test_app.py", "content": "def test_add():\n    assert True\n"},
+    {"path": ".github/workflows/ci.yml", "content": "name: ci\n"},
+    {"path": "requirements.txt", "content": "fastapi==1.0\nrequests==2.0\nhttpx==0.28\n"},
+    {"path": "poetry.lock", "content": "# lock\n"},
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("gap", [
+    {"tree_truncated": True},
+    {"capped_over_limit": 1200},
+    {"fetch_failures": {"fetch_http_error": 3}},
+])
+async def test_incomplete_coverage_turns_clean_axes_into_partial(gap):
+    complete = await run_scan(CLEAN_FILES, coverage={"tree_truncated": False})
+    partial = await run_scan(CLEAN_FILES, coverage=gap)
+
+    assert complete["complete"] is True
+    assert partial["complete"] is False
+
+    for axis, result in partial["axes"].items():
+        assert result["status"] != "clean", f"{axis} affirme 'clean' sur une couverture partielle"
+        if complete["axes"][axis]["status"] == "clean":
+            assert result["status"] == "partial"
+
+
+@pytest.mark.asyncio
+async def test_deliberate_exclusions_do_not_make_a_scan_partial():
+    scan = await run_scan(CLEAN_FILES, coverage={
+        "excluded": {"excluded_by_extension": 40},
+        "tree_truncated": False,
+        "capped_over_limit": 0,
+        "fetch_failures": {},
+    })
+
+    assert scan["complete"] is True
+
+
+@pytest.mark.asyncio
+async def test_axes_with_issues_keep_their_status_when_coverage_is_partial():
+    scan = await run_scan(FILES, coverage={"tree_truncated": True})
+
+    assert scan["axes"]["secrets_detection"]["status"] == "issues_found"
+
+
 @pytest.mark.asyncio
 async def test_tracked_paths_widen_the_gitignore_axis():
     files = [

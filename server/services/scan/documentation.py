@@ -44,7 +44,11 @@ PLATFORM_ENV = {
 MIN_ENV_VARS_FOR_EXAMPLE = 3
 
 
-def scan_documentation(files: list[dict], language: str = DEFAULT_LANGUAGE) -> dict:
+def scan_documentation(
+    files: list[dict],
+    language: str = DEFAULT_LANGUAGE,
+    tracked_paths: list[str] | None = None,
+) -> dict:
     language = normalize(language)
 
     documents = [
@@ -54,29 +58,29 @@ def scan_documentation(files: list[dict], language: str = DEFAULT_LANGUAGE) -> d
     if not documents:
         return unavailable(AXIS, text("recommendation.no_readme", language))
 
-    tracked = {entry.get("path", "") for entry in files if entry.get("path")}
+    sample = {entry.get("path", "") for entry in files if entry.get("path")}
+    tracked = sample if tracked_paths is None else set(tracked_paths)
     used = _env_usage(files)
     declared = _declared_env(files)
+    has_env_example = _has_env_example(tracked)
 
     findings = _link_findings(documents, tracked, language)
-    findings += _env_findings(documents, used, declared, files, language)
+    findings += _env_findings(documents, used, declared, has_env_example, language)
 
     metrics = {
         "documents": len(documents),
         "env_used": len(used),
         "env_declared": len(declared),
-        "has_env_example": _has_env_example(files),
+        "has_env_example": has_env_example,
+        "sample_covers_repository": len(sample) == len(tracked),
     }
 
     logger.info("Scan documentation: %d findings", len(findings))
     return axis_result(AXIS, findings, metrics=metrics)
 
 
-def _has_env_example(files: list[dict]) -> bool:
-    return any(
-        PurePosixPath(entry.get("path", "")).name in ENV_EXAMPLE_NAMES
-        for entry in files
-    )
+def _has_env_example(paths: set[str]) -> bool:
+    return any(PurePosixPath(path).name in ENV_EXAMPLE_NAMES for path in paths)
 
 
 def _resolve(document_path: str, target: str) -> str | None:
@@ -184,7 +188,7 @@ def _env_findings(
     documents: list[dict],
     used: dict[str, tuple[str, int]],
     declared: set[str],
-    files: list[dict],
+    has_env_example: bool,
     language: str,
 ) -> list[dict]:
     findings = []
@@ -217,7 +221,7 @@ def _env_findings(
             identity=name,
         ))
 
-    if len(used) >= MIN_ENV_VARS_FOR_EXAMPLE and not _has_env_example(files):
+    if len(used) >= MIN_ENV_VARS_FOR_EXAMPLE and not has_env_example:
         findings.append(make_finding(
             AXIS,
             "docs.no_env_example",

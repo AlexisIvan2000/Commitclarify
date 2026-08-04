@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 EXCLUDED_BY_PATH = "excluded_by_path"
 EXCLUDED_BY_EXTENSION = "excluded_by_extension"
 SKIPPED_TOO_LARGE = "skipped_too_large"
+CAPPED_OVER_LIMIT = "capped_over_limit"
 
 EMPTY_FILES = "empty_files"
 SKIPPED_TOO_MANY_LINES = "skipped_too_many_lines"
@@ -90,11 +91,12 @@ async def get_repo_tree(
             "size": item.get("size", 0),
         })
 
-    capped = len(eligible) > MAX_REPO_FILES
+    capped = max(0, len(eligible) - MAX_REPO_FILES)
 
     logger.info(
-        "Arbre repo %s/%s: %d eligibles sur %d versionnes (truncated=%s, exclusions=%s)",
-        owner, repo, len(eligible), len(blobs), data.get("truncated", False), dict(exclusions),
+        "Arbre repo %s/%s: %d eligibles sur %d versionnes (truncated=%s, plafonnes=%d, exclusions=%s)",
+        owner, repo, len(eligible), len(blobs),
+        data.get("truncated", False), capped, dict(exclusions),
     )
 
     return {
@@ -102,7 +104,7 @@ async def get_repo_tree(
         "truncated": data.get("truncated", False),
         "tracked_paths": [item["path"] for item in blobs],
         "exclusions": dict(exclusions),
-        "capped_at_limit": capped,
+        "capped_over_limit": capped,
     }
 
 
@@ -233,6 +235,9 @@ def _repo_data(
     excluded = Counter(tree["exclusions"])
     failures = Counter()
 
+    if tree["capped_over_limit"]:
+        excluded[CAPPED_OVER_LIMIT] = tree["capped_over_limit"]
+
     for reason, count in not_fetched.items():
         target = excluded if reason in DELIBERATE_SKIPS else failures
         target[reason] += count
@@ -251,7 +256,7 @@ def _repo_data(
             "excluded":        dict(excluded),
             "fetch_failures":  dict(failures),
             "fetched_detail":  dict(fetched_notes or {}),
-            "capped_at_limit": tree["capped_at_limit"],
+            "capped_over_limit": tree["capped_over_limit"],
         },
     }
 

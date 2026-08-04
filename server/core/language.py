@@ -454,6 +454,10 @@ TEXTS: dict[str, dict[str, str]] = {
 
     "result.clean": {"fr": "Aucun probleme", "en": "No issue"},
     "result.issues_found": {"fr": "Problemes detectes", "en": "Issues found"},
+    "result.partial": {
+        "fr": "Aucun probleme sur la partie analysee",
+        "en": "No issue in the analyzed subset",
+    },
     "result.unavailable": {"fr": "Non disponible", "en": "Unavailable"},
     "result.error": {"fr": "Erreur pendant l'analyse", "en": "Error during analysis"},
 

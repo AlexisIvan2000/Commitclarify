@@ -81,7 +81,8 @@ async def test_project_without_tests_is_reported():
     result = await scan_quality([{"path": "src/app.py", "content": SIMPLE_FUNCTION}])
 
     assert "quality.no_tests" in _rules(result)
-    assert result["metrics"]["test_files"] == 0
+    assert result["metrics"]["has_tests"] is False
+    assert result["metrics"]["test_files_in_sample"] == 0
 
 
 @pytest.mark.asyncio
@@ -92,8 +93,8 @@ async def test_tests_directory_clears_the_finding():
     ])
 
     assert "quality.no_tests" not in _rules(result)
-    assert result["metrics"]["test_files"] == 1
-    assert result["metrics"]["test_ratio"] == 1.0
+    assert result["metrics"]["test_files_in_sample"] == 1
+    assert result["metrics"]["test_ratio_in_sample"] == 1.0
 
 
 @pytest.mark.asyncio
@@ -196,6 +197,70 @@ async def test_linter_issues_become_findings_with_unique_ids():
 
 
 @pytest.mark.asyncio
+async def test_absence_rules_look_at_the_whole_repository_not_the_sample():
+    sample = [{"path": "src/index.js", "content": "export const x = 1;\n"}]
+    tracked = [
+        "src/index.js",
+        "package.json",
+        "yarn.lock",
+        "src/index.test.js",
+        ".github/workflows/ci.yml",
+    ]
+
+    result = await scan_quality(sample, tracked_paths=tracked)
+
+    assert result["metrics"]["missing_lockfiles"] == []
+    assert result["metrics"]["has_ci"] is True
+    assert result["metrics"]["has_tests"] is True
+    assert _rules(result).isdisjoint({"quality.no_lockfile", "quality.no_ci", "quality.no_tests"})
+
+
+@pytest.mark.asyncio
+async def test_the_same_sample_without_the_tree_produces_the_false_positives():
+    sample = [{"path": "src/index.js", "content": "export const x = 1;\n"}]
+
+    result = await scan_quality(sample)
+
+    assert {"quality.no_lockfile", "quality.no_ci", "quality.no_tests"} <= _rules(result)
+    assert result["metrics"]["sample_covers_repository"] is True
+
+
+@pytest.mark.asyncio
+async def test_the_sample_counts_are_labelled_as_such():
+    result = await scan_quality(
+        [{"path": "a.py", "content": SIMPLE_FUNCTION}],
+        tracked_paths=["a.py", "b.py", "tests/test_a.py"],
+    )
+
+    assert result["metrics"]["source_files_in_sample"] == 1
+    assert result["metrics"]["sample_covers_repository"] is False
+    assert "source_files" not in result["metrics"]
+    assert "test_ratio" not in result["metrics"]
+
+
+@pytest.mark.asyncio
+async def test_complexity_is_null_when_no_python_was_analyzed():
+    result = await scan_quality([{"path": "src/app.js", "content": "export const x = 1;\n"}])
+    complexity = result["metrics"]["complexity"]
+
+    assert complexity["max"] is None
+    assert complexity["average"] is None
+    assert complexity["over_threshold"] is None
+    assert complexity["analyzed_languages"] == []
+    assert complexity["unanalyzed_languages"] == ["node"]
+
+
+@pytest.mark.asyncio
+async def test_complexity_is_zero_only_when_python_was_actually_analyzed():
+    result = await scan_quality([{"path": "a.py", "content": SIMPLE_FUNCTION}])
+    complexity = result["metrics"]["complexity"]
+
+    assert complexity["analyzed_languages"] == ["python"]
+    assert complexity["over_threshold"] == 0
+    assert complexity["max"] == 1
+
+
+@pytest.mark.asyncio
 async def test_complexity_identifier_survives_a_line_shift():
     def identifier(result):
         return next(f["id"] for f in result["findings"] if f["rule"] == "quality.complex_function")
@@ -211,4 +276,4 @@ async def test_empty_input_does_not_crash():
     result = await scan_quality([])
 
     assert result["status"] == "clean"
-    assert result["metrics"]["source_files"] == 0
+    assert result["metrics"]["source_files_in_sample"] == 0
