@@ -9,6 +9,18 @@ def _by_rule(result, rule):
     return [finding for finding in result["findings"] if finding["rule"] == rule]
 
 
+def test_an_empty_gitignore_is_not_reported_as_missing():
+    result = scan_gitignore([
+        {"path": ".gitignore", "content": ""},
+        {"path": "app.py", "content": "x = 1"},
+    ])
+
+    assert "gitignore.missing" not in _rules(result)
+    assert result["metrics"]["gitignore_files"] == 1
+    assert result["metrics"]["rules"] == 0
+    assert _by_rule(result, "gitignore.rule_missing")
+
+
 def test_missing_gitignore_is_the_only_finding():
     result = scan_gitignore([{"path": "app.py", "content": "x = 1"}])
 

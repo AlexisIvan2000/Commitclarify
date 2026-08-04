@@ -3,19 +3,23 @@ from pathlib import Path
 
 from services.scan import SCAN_VERSION
 
-SCAN_PACKAGE = Path(__file__).resolve().parents[2] / "services" / "scan"
+SERVICES = Path(__file__).resolve().parents[2] / "services"
 
-RULE_MODULES = sorted(
-    path for path in SCAN_PACKAGE.glob("*.py") if path.name != "__init__.py"
+RESULT_DEFINING_MODULES = sorted(
+    path
+    for package in ("scan", "github")
+    for path in (SERVICES / package).glob("*.py")
+    if path.name != "__init__.py"
 )
 
-EXPECTED_VERSION_AND_DIGEST = (2, "a6bb836ddaa35cd0")
+EXPECTED_VERSION_AND_DIGEST = (3, "c3a3972d0c79e315")
 
 BUMP_INSTRUCTIONS = (
-    "Les regles du scan ont change.\n"
-    "Si la detection ou la forme de la sortie changent, incrementez SCAN_VERSION dans "
-    "services/scan/report.py — sinon les scans deja en cache resteront servis avec des "
-    "resultats obsoletes.\n"
+    "Ce qui determine le resultat d'un scan a change.\n"
+    "services/scan definit les regles, services/github definit ce que les regles voient : "
+    "les deux peuvent modifier la sortie.\n"
+    "Si le resultat d'un meme depot peut differer, incrementez SCAN_VERSION dans "
+    "services/scan/report.py — sinon les scans deja en cache resteront servis obsoletes.\n"
     "Puis reportez ici le couple affiche par l'echec."
 )
 
@@ -23,17 +27,18 @@ BUMP_INSTRUCTIONS = (
 def rules_digest() -> str:
     digest = hashlib.sha256()
 
-    for path in RULE_MODULES:
+    for path in RESULT_DEFINING_MODULES:
         digest.update(path.name.encode("utf-8"))
         digest.update(path.read_text(encoding="utf-8").replace("\r\n", "\n").encode("utf-8"))
 
     return digest.hexdigest()[:16]
 
 
-def test_the_rule_modules_are_actually_found():
-    names = {path.name for path in RULE_MODULES}
+def test_the_result_defining_modules_are_actually_found():
+    names = {path.name for path in RESULT_DEFINING_MODULES}
 
     assert {"secrets.py", "gitignore.py", "quality.py", "documentation.py"} <= names
+    assert {"repo_fetcher.py", "client.py"} <= names
 
 
 def test_changing_the_rules_forces_a_conscious_version_bump():

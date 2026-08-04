@@ -35,7 +35,7 @@ FETCH_CONTENT_UNAVAILABLE = "fetch_content_unavailable"
 FETCH_UNEXPECTED_PAYLOAD = "fetch_unexpected_payload"
 FETCH_EXCEPTION = "fetch_exception"
 
-DELIBERATE_SKIPS = frozenset({EMPTY_FILES, SKIPPED_TOO_MANY_LINES, SKIPPED_MINIFIED})
+DELIBERATE_SKIPS = frozenset({SKIPPED_TOO_MANY_LINES, SKIPPED_MINIFIED})
 
 
 def _rejection_reason(path: str, size: int) -> Optional[str]:
@@ -106,6 +106,16 @@ async def get_repo_tree(
     }
 
 
+def _entry(file: dict, content: str) -> dict:
+    return {
+        "path":     file["path"],
+        "sha":      file["sha"],
+        "size":     file["size"],
+        "content":  content,
+        "language": Path(file["path"]).suffix.lstrip(".") or "text",
+    }
+
+
 def _empty_payload_reason(payload: dict) -> str:
     encoding = payload.get("encoding")
 
@@ -139,7 +149,10 @@ async def _fetch_file_content(
         payload = response.json()
         encoded = payload.get("content", "")
         if not encoded:
-            return None, _empty_payload_reason(payload)
+            reason = _empty_payload_reason(payload)
+            if reason == EMPTY_FILES:
+                return _entry(file, ""), EMPTY_FILES
+            return None, reason
 
         content = base64.b64decode(encoded.replace("\n", "")).decode("utf-8", errors="replace")
 
@@ -150,13 +163,7 @@ async def _fetch_file_content(
         if len(lines) <= 3 and len(content) > 5000:
             return None, SKIPPED_MINIFIED
 
-        return {
-            "path":     file["path"],
-            "sha":      file["sha"],
-            "size":     file["size"],
-            "content":  content,
-            "language": Path(file["path"]).suffix.lstrip(".") or "text",
-        }, None
+        return _entry(file, content), None
 
     except Exception as exc:
         logger.warning("Echec de recuperation de %s: %s", file["path"], exc)
@@ -182,7 +189,8 @@ async def fetch_repo_files(
     headers = github_headers(github_token)
 
     results = []
-    failures = Counter()
+    not_fetched = Counter()
+    fetched_notes = Counter()
 
     async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
         for i in range(0, len(eligible), BATCH_SIZE):
@@ -191,21 +199,31 @@ async def fetch_repo_files(
                 _fetch_file_content(client, owner, repo, f, headers)
                 for f in batch
             ]
-            for entry, reason in await asyncio.gather(*tasks):
+            for entry, note in await asyncio.gather(*tasks):
                 if entry is None:
-                    failures[reason] += 1
-                else:
-                    results.append(entry)
+                    not_fetched[note] += 1
+                    continue
+
+                results.append(entry)
+                if note:
+                    fetched_notes[note] += 1
 
     logger.info(
-        "Fetch %s/%s termine: %d/%d fichiers recuperes (echecs=%s)",
-        owner, repo, len(results), len(eligible), dict(failures),
+        "Fetch %s/%s termine: %d/%d recuperes (non recuperes=%s, dont vides=%d)",
+        owner, repo, len(results), len(eligible),
+        dict(not_fetched), fetched_notes[EMPTY_FILES],
     )
 
-    return _repo_data(repo_sha, results, tree, failures)
+    return _repo_data(repo_sha, results, tree, not_fetched, fetched_notes)
 
 
-def _repo_data(repo_sha: str, files: list[dict], tree: dict, outcomes: Counter) -> dict:
+def _repo_data(
+    repo_sha: str,
+    files: list[dict],
+    tree: dict,
+    not_fetched: Counter,
+    fetched_notes: Counter | None = None,
+) -> dict:
     eligible_count = len(tree["files"])
     readme = next(
         (f for f in files if Path(f["path"]).name.lower() == "readme.md"),
@@ -215,7 +233,7 @@ def _repo_data(repo_sha: str, files: list[dict], tree: dict, outcomes: Counter) 
     excluded = Counter(tree["exclusions"])
     failures = Counter()
 
-    for reason, count in outcomes.items():
+    for reason, count in not_fetched.items():
         target = excluded if reason in DELIBERATE_SKIPS else failures
         target[reason] += count
 
@@ -232,6 +250,7 @@ def _repo_data(repo_sha: str, files: list[dict], tree: dict, outcomes: Counter) 
             "tracked":         len(tree["tracked_paths"]),
             "excluded":        dict(excluded),
             "fetch_failures":  dict(failures),
+            "fetched_detail":  dict(fetched_notes or {}),
             "capped_at_limit": tree["capped_at_limit"],
         },
     }

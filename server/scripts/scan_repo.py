@@ -35,6 +35,7 @@ def build_coverage(repo_data: dict) -> dict:
         "fetched_files": stats["fetched"],
         "excluded": stats["excluded"],
         "fetch_failures": stats["fetch_failures"],
+        "fetched_detail": stats["fetched_detail"],
         "capped_at_limit": stats["capped_at_limit"],
         "tree_truncated": repo_data["truncated"],
     }
@@ -53,6 +54,8 @@ def print_summary(scan: dict) -> None:
         print(f"  ecartes  {reason:26} {count}")
     for reason, count in sorted(coverage["fetch_failures"].items()):
         print(f"  echecs   {reason:26} {count}")
+    for reason, count in sorted(coverage["fetched_detail"].items()):
+        print(f"  dont     {reason:26} {count}  (inclus dans les fichiers analyses)")
     print(f"findings: {scan['summary']['findings']}  ignores: {scan['summary']['dropped']}")
     print(f"severites: {scan['summary']['by_severity']}\n")
 

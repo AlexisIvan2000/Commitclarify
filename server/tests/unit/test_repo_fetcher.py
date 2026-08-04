@@ -172,14 +172,26 @@ def fake_api():
 
 
 @pytest.mark.asyncio
-async def test_empty_files_are_not_counted_as_fetch_failures(fake_api):
+async def test_an_empty_file_is_fetched_not_discarded(fake_api):
     from services.github.repo_fetcher import fetch_repo_files
 
     data = await fetch_repo_files("owner", "repo", "token")
-    stats = data["stats"]
 
-    assert stats["excluded"]["empty_files"] == 1
+    empty = next(entry for entry in data["files"] if entry["path"] == "core/__init__.py")
+    assert empty["content"] == ""
+    assert empty["size"] == 0
+
+
+@pytest.mark.asyncio
+async def test_empty_files_are_a_sub_count_of_fetched_not_a_bucket(fake_api):
+    from services.github.repo_fetcher import fetch_repo_files
+
+    stats = (await fetch_repo_files("owner", "repo", "token"))["stats"]
+
+    assert stats["fetched_detail"]["empty_files"] == 1
+    assert "empty_files" not in stats["excluded"]
     assert "empty_files" not in stats["fetch_failures"]
+    assert stats["fetched_detail"]["empty_files"] <= stats["fetched"]
 
 
 @pytest.mark.asyncio
@@ -208,8 +220,18 @@ async def test_every_tracked_file_is_accounted_for_exactly_once(fake_api):
     )
 
     assert accounted == stats["tracked"] == 5
-    assert stats["fetched"] == 1
-    assert [entry["path"] for entry in data["files"]] == ["app.py"]
+    assert stats["fetched"] == 2
+    assert [entry["path"] for entry in data["files"]] == ["app.py", "core/__init__.py"]
+
+
+@pytest.mark.asyncio
+async def test_the_detail_never_enters_the_partition(fake_api):
+    from services.github.repo_fetcher import fetch_repo_files
+
+    stats = (await fetch_repo_files("owner", "repo", "token"))["stats"]
+    buckets = set(stats["excluded"]) | set(stats["fetch_failures"])
+
+    assert buckets.isdisjoint(stats["fetched_detail"])
 
 
 @pytest.mark.asyncio
