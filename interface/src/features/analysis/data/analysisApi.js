@@ -9,6 +9,10 @@ export function openAnalysisStream(analysisId, options) {
   return openEventStream(`/analyze/${analysisId}/stream`, options)
 }
 
+export function openDeepenStream(analysisId, options) {
+  return openEventStream(`/analyze/${analysisId}/deepen/stream`, options)
+}
+
 export function fetchHistory() {
   return requestJson('/analyze/history')
 }

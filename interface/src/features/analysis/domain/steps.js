@@ -1,7 +1,7 @@
 import {
   ShieldAlert, FolderGit2, SearchCode, FileText,
-  CheckCircle, AlertTriangle, XCircle,
-  Download, Database, Brain,
+  CheckCircle, AlertTriangle, XCircle, EyeOff, HelpCircle,
+  Download, Database, Brain, ScanSearch,
 } from 'lucide-react'
 import { getStrings } from '@core/translation'
 
@@ -14,19 +14,29 @@ export const STEP_ICONS = {
   readme_check: FileText,
 }
 
-export const STATUS_ICONS = {
+export const RESULT_ICONS = {
   clean: CheckCircle,
-  warning: AlertTriangle,
-  alert: XCircle,
+  partial: HelpCircle,
+  issues_found: AlertTriangle,
+  unavailable: EyeOff,
+  error: XCircle,
 }
 
-export const STATUS_COLORS = {
+export const RESULT_COLORS = {
   clean: '#2ecc71',
-  warning: '#e7a33e',
-  alert: '#e74c3c',
+  partial: '#7f8c8d',
+  issues_found: '#e7a33e',
+  unavailable: '#888888',
+  error: '#e74c3c',
 }
 
-export const STEPPER_STEPS = [
+export const SCAN_STEPPER = [
+  { key: 'fetching', icon: Download },
+  { key: 'scanning', icon: ScanSearch },
+  { key: 'done', icon: CheckCircle },
+]
+
+export const DEEPEN_STEPPER = [
   { key: 'fetching', icon: Download },
   { key: 'indexing', icon: Database },
   { key: 'analyzing', icon: Brain },
@@ -41,6 +51,10 @@ export function stepperLabel(step) {
   return getStrings().analysis.stepperLabels[step] || step
 }
 
-export function statusColor(status) {
-  return STATUS_COLORS[status] || '#888888'
+export function resultLabel(status) {
+  return getStrings().analysis.resultLabels[status] || status
+}
+
+export function resultColor(status) {
+  return RESULT_COLORS[status] || '#888888'
 }

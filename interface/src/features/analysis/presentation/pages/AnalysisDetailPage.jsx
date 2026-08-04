@@ -1,14 +1,26 @@
+import { useCallback, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, FileDown, FileJson } from 'lucide-react'
 import ErrorState from '@core/components/ErrorState'
 import Spinner from '@core/components/Spinner'
 import { CATALOGS } from '@core/translation'
 import useTranslation from '@core/translation/useTranslation'
-import { formatDateTime } from '@core/utils/date'
-import AnalysisResultCard from '../components/AnalysisResultCard'
+import AnalysisReport from '../components/AnalysisReport'
+import AnalysisStepper from '../components/AnalysisStepper'
 import AppNavbar from '../components/AppNavbar'
+import DeepenAction from '../components/DeepenAction'
 import useAnalysisDetail from '../provider/useAnalysisDetail'
+import useDeepenStream, { STREAM_PHASES } from '../provider/useDeepenStream'
+import useQuota from '../provider/useQuota'
 import useReportExport from '../provider/useReportExport'
+import { canDeepen } from '../../domain/status'
+import { DEEPEN_STEPPER } from '../../domain/steps'
+
+function resultsByAspect(analysis) {
+  const map = {}
+  for (const result of analysis?.results || []) map[result.aspect] = result
+  return map
+}
 
 function AnalysisDetailPage() {
   const t = useTranslation()
@@ -16,8 +28,17 @@ function AnalysisDetailPage() {
   const navigate = useNavigate()
   const { analysis, loading, error, reload } = useAnalysisDetail(analysisId)
   const { exportReport, pendingFormat, error: exportError } = useReportExport(analysisId)
+  const { quota, refresh: refreshQuota } = useQuota()
+  const [deepened, setDeepened] = useState(null)
 
-  const results = Array.isArray(analysis?.results) ? analysis.results : []
+  const onDeepened = useCallback(updated => {
+    setDeepened(updated)
+    refreshQuota?.()
+  }, [refreshQuota])
+
+  const deepen = useDeepenStream(analysisId, onDeepened)
+  const shown = deepened || analysis
+  const deepening = deepen.phase === STREAM_PHASES.streaming
 
   return (
     <div className="dash fade-in">
@@ -34,20 +55,8 @@ function AnalysisDetailPage() {
           <ErrorState message={error || t.errors.analysisNotFound} onRetry={reload} />
         )}
 
-        {!loading && !error && analysis && (
+        {!loading && !error && shown && (
           <>
-            <div className="analysis-header">
-              <h2 className="analysis-title">
-                {t.analysis.reportTitle} <span className="highlight">{analysis.repo_name}</span>
-              </h2>
-              <span className="analysis-date">{formatDateTime(analysis.created_at)}</span>
-              {CATALOGS[analysis.language] && (
-                <span className="report-language-badge">
-                  {t.analysis.generatedIn} {CATALOGS[analysis.language].languageName}
-                </span>
-              )}
-            </div>
-
             <div className="export-actions">
               <button
                 className="repo-action-btn"
@@ -63,19 +72,37 @@ function AnalysisDetailPage() {
               >
                 <FileJson size={14} /> {t.actions.exportJson}
               </button>
+              {CATALOGS[shown.language] && (
+                <span className="report-language-badge">
+                  {t.analysis.generatedIn} {CATALOGS[shown.language].languageName}
+                </span>
+              )}
             </div>
 
             {exportError && <ErrorState message={exportError} />}
 
-            {results.length === 0 ? (
-              <p className="no-results">{t.analysis.emptyResults}</p>
-            ) : (
-              <div className="analysis-results-grid">
-                {results.map(result => (
-                  <AnalysisResultCard key={result.id} aspect={result.aspect} result={result} />
-                ))}
-              </div>
+            {deepening && (
+              <AnalysisStepper
+                currentStep={deepen.currentStep}
+                messages={deepen.stepMessages}
+                phase={deepen.phase}
+                steps={DEEPEN_STEPPER}
+              />
             )}
+
+            {deepen.phase === STREAM_PHASES.error && <ErrorState message={deepen.error} />}
+
+            <AnalysisReport
+              analysis={shown}
+              results={resultsByAspect(shown)}
+              action={canDeepen(shown) && (
+                <DeepenAction
+                  remaining={quota?.remaining}
+                  running={deepening}
+                  onStart={deepen.start}
+                />
+              )}
+            />
           </>
         )}
       </main>

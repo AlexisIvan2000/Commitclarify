@@ -1,5 +1,5 @@
 import { CheckCircle, Loader, XCircle } from 'lucide-react'
-import { STEPPER_STEPS, stepperLabel } from '../../domain/steps'
+import { SCAN_STEPPER, stepperLabel } from '../../domain/steps'
 
 function stateFor(index, activeIndex, phase) {
   if (phase === 'error') {
@@ -21,12 +21,12 @@ function StateIcon({ state, fallback }) {
   return <Fallback size={20} />
 }
 
-function AnalysisStepper({ currentStep, messages, phase }) {
-  const activeIndex = STEPPER_STEPS.findIndex(step => step.key === currentStep)
+function AnalysisStepper({ currentStep, messages, phase, steps = SCAN_STEPPER }) {
+  const activeIndex = steps.findIndex(step => step.key === currentStep)
 
   return (
     <div className="analysis-stepper">
-      {STEPPER_STEPS.map((step, index) => {
+      {steps.map((step, index) => {
         const state = stateFor(index, activeIndex, phase)
 
         return (
@@ -39,7 +39,7 @@ function AnalysisStepper({ currentStep, messages, phase }) {
               {messages[step.key] && <span className="stepper-message">{messages[step.key]}</span>}
             </div>
 
-            {index < STEPPER_STEPS.length - 1 && (
+            {index < steps.length - 1 && (
               <div className={`stepper-connector ${state === 'completed' ? 'filled' : ''}`}>
                 <div className="stepper-connector-fill" />
               </div>
