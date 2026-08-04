@@ -1,6 +1,7 @@
 import json
 import uuid
 from datetime import timedelta
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -13,6 +14,16 @@ from services.analysis import pipeline
 from services.export.pdf import generate_pdf
 from services.export.serializers import analysis_to_dict
 
+def _file(path: str, content: str) -> dict:
+    return {
+        "path": path,
+        "sha": f"blob-{path}",
+        "size": len(content),
+        "content": content,
+        "language": Path(path).suffix.lstrip(".") or "text",
+    }
+
+
 REPO_DATA = {
     "sha": "deadbeef" * 5,
     "truncated": False,
@@ -20,11 +31,11 @@ REPO_DATA = {
         ".gitignore", "README.md", "app.py", "requirements.txt", ".env",
     ],
     "files": [
-        {"path": ".gitignore", "content": "*.log\n"},
-        {"path": "README.md", "content": "# App\n\nSee [guide](docs/guide.md).\n"},
-        {"path": "app.py", "content": "import os\n\nKEY = os.getenv('APP_SECRET')\n"},
-        {"path": "requirements.txt", "content": "fastapi==1.0\nrequests==2.0\nhttpx==0.28\n"},
-        {"path": ".env", "content": "TOKEN=sk-abcdefghijklmnopqrstuvwxyz0123\n"},
+        _file(".gitignore", "*.log\n"),
+        _file("README.md", "# App\n\nSee [guide](docs/guide.md).\n"),
+        _file("app.py", "import os\n\nKEY = os.getenv('APP_SECRET')\n"),
+        _file("requirements.txt", "fastapi==1.0\nrequests==2.0\nhttpx==0.28\n"),
+        _file(".env", "TOKEN=sk-abcdefghijklmnopqrstuvwxyz0123\n"),
     ],
     "readme": None,
     "stats": {
@@ -48,13 +59,33 @@ async def _drain(generator) -> list[dict]:
     return _events([chunk async for chunk in generator])
 
 
+REPOSITORY = {"id": 424242, "full_name": "owner/repo", "default_branch": "main"}
+
+
+def _github(repo_data=REPO_DATA):
+    return (
+        patch(
+            "services.analysis.pipeline.get_repository",
+            new_callable=AsyncMock,
+            return_value=REPOSITORY,
+        ),
+        patch(
+            "services.analysis.pipeline.get_repo_latest_sha",
+            new_callable=AsyncMock,
+            return_value=repo_data["sha"],
+        ),
+        patch(
+            "services.analysis.pipeline.fetch_repo_files",
+            new_callable=AsyncMock,
+            return_value=repo_data,
+        ),
+    )
+
+
 @pytest.fixture
 def fetched():
-    with patch(
-        "services.analysis.pipeline.fetch_repo_files",
-        new_callable=AsyncMock,
-        return_value=REPO_DATA,
-    ) as mock:
+    repository, sha, files = _github()
+    with repository, sha, files as mock:
         yield mock
 
 
@@ -160,16 +191,98 @@ async def test_indexing_never_happens_during_the_scan(db, test_user, fetched):
 async def test_a_repository_without_tracked_files_fails_cleanly(db, test_user):
     analysis = await _pending(db, test_user)
     empty = {**REPO_DATA, "files": [], "tracked_paths": []}
+    repository, sha, files = _github(empty)
 
-    with patch(
-        "services.analysis.pipeline.fetch_repo_files",
-        new_callable=AsyncMock,
-        return_value=empty,
-    ):
+    with repository, sha, files:
         events = await _drain(pipeline.run_scan_phase(analysis, "token", db))
 
     assert events[-1]["event"] == "error"
     assert analysis.status == "failed"
+
+
+@pytest.mark.asyncio
+async def test_a_second_scan_of_the_same_commit_reuses_the_cache(db, test_user):
+    first = await _pending(db, test_user)
+    second = await _pending(db, test_user)
+    repository, sha, files = _github()
+
+    with repository, sha, files as fetch:
+        await _drain(pipeline.run_scan_phase(first, "token", db))
+        assert fetch.await_count == 1
+
+        await _drain(pipeline.run_scan_phase(second, "token", db))
+        assert fetch.await_count == 1
+
+    assert second.status == "scanned"
+    assert second.scan_version == first.scan_version
+    assert second.repo_id == REPOSITORY["id"]
+
+
+@pytest.mark.asyncio
+async def test_the_cached_scan_is_invisible_to_the_client(db, test_user):
+    first = await _pending(db, test_user)
+    second = await _pending(db, test_user)
+    repository, sha, files = _github()
+
+    with repository, sha, files:
+        fresh = await _drain(pipeline.run_scan_phase(first, "token", db))
+        cached = await _drain(pipeline.run_scan_phase(second, "token", db))
+
+    def payloads(events):
+        return [
+            {key: value for key, value in event.items() if key != "analysis_id"}
+            for event in events
+            if event["event"] in ("step_complete", "done")
+        ]
+
+    assert payloads(fresh) == payloads(cached)
+
+
+@pytest.mark.asyncio
+async def test_another_language_does_not_hit_the_cache(db, test_user):
+    french = await _pending(db, test_user)
+    english = await _pending(db, test_user)
+    english.language = "en"
+    await db.commit()
+
+    repository, sha, files = _github()
+    with repository, sha, files as fetch:
+        await _drain(pipeline.run_scan_phase(french, "token", db))
+        await _drain(pipeline.run_scan_phase(english, "token", db))
+
+        assert fetch.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_a_newer_scan_version_bypasses_the_cache(db, test_user):
+    first = await _pending(db, test_user)
+    second = await _pending(db, test_user)
+    repository, sha, files = _github()
+
+    with repository, sha, files as fetch:
+        await _drain(pipeline.run_scan_phase(first, "token", db))
+
+        with patch("services.analysis.pipeline.SCAN_VERSION", pipeline.SCAN_VERSION + 1):
+            await _drain(pipeline.run_scan_phase(second, "token", db))
+
+        assert fetch.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_metrics_survive_persistence(db, test_user, fetched):
+    analysis = await _pending(db, test_user)
+    await _drain(pipeline.run_scan_phase(analysis, "token", db))
+
+    rows = await db.execute(
+        select(AnalysisResult).where(
+            AnalysisResult.analysis_id == analysis.id,
+            AnalysisResult.aspect == "quality_check",
+        )
+    )
+    metrics = rows.scalar_one().metrics
+
+    assert metrics["complexity"]["threshold"] == 10
+    assert "source_files_in_sample" in metrics
 
 
 def _analysis(status: str, created_at=None) -> Analysis:

@@ -73,8 +73,6 @@ async def start_analysis(
         logger.warning("Format repo invalide: %s", repo_full_name)
         raise ValidationError("Format invalide. Attendu: owner/repo")
 
-    await quota.consume(current_user.github_id, db)
-
     analysis = analysis_repo.stage(
         user_id=current_user.id,
         repo_name=repo_full_name,
@@ -124,6 +122,8 @@ async def stream_ai_analysis(
 ):
     analysis = await _owned_analysis(analysis_id, current_user, db)
     pipeline.assert_analyzable(analysis)
+
+    await quota.reserve(current_user.github_id, analysis.id, db)
 
     github_token = decrypt_github_token(current_user.access_token)
 

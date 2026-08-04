@@ -392,6 +392,16 @@ TEXTS: dict[str, dict[str, str]] = {
         "fr": "Analyse IA en cours...",
         "en": "Running AI analysis...",
     },
+    "progress.ai_failed": {
+        "fr": (
+            "L'analyse IA n'a rien pu produire (service indisponible). "
+            "Votre quota n'a pas ete decompte."
+        ),
+        "en": (
+            "The AI analysis could not produce anything (service unavailable). "
+            "Your quota was not charged."
+        ),
+    },
     "progress.no_files": {
         "fr": "Aucun fichier analysable trouve.",
         "en": "No analyzable file found.",

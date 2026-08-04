@@ -1,5 +1,5 @@
 from core.database import Base
-from models.db.analysis import Analysis, AnalysisLog, AnalysisResult
+from models.db.analysis import Analysis, AnalysisLog, AnalysisResult, ScanCache
 from models.db.token import AuthCode, RefreshToken
 from models.db.user import User
 
@@ -11,4 +11,5 @@ __all__ = [
     "Analysis",
     "AnalysisResult",
     "AnalysisLog",
+    "ScanCache",
 ]

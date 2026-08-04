@@ -197,10 +197,10 @@ async def fetch_repo_files(
     repo: str,
     github_token: str,
     branch: str = "HEAD",
+    repo_sha: str | None = None,
 ) -> dict:
-   
-
-    repo_sha = await get_repo_latest_sha(owner, repo, github_token, branch)
+    if repo_sha is None:
+        repo_sha = await get_repo_latest_sha(owner, repo, github_token, branch)
 
     tree = await get_repo_tree(owner, repo, github_token, branch)
     eligible = tree["files"]
@@ -294,6 +294,21 @@ def _repo_data(
             "fetched_detail":  dict(fetched_notes or {}),
             "capped_over_limit": tree["capped_over_limit"],
         },
+    }
+
+
+async def get_repository(owner: str, repo: str, github_token: str) -> dict:
+    data = await get_json(
+        f"{API_ROOT}/repos/{owner}/{repo}",
+        github_token,
+        f"Le depot {owner}/{repo}",
+        timeout=15,
+    )
+
+    return {
+        "id": data["id"],
+        "full_name": data["full_name"],
+        "default_branch": data["default_branch"],
     }
 
 

@@ -10,6 +10,7 @@ from api.middlewares.jwt_middleware import JWTMiddleware
 from api.routers import analysis, auth, repos
 from core.config import FRONTEND_URL, missing_settings
 from core.database import engine
+from core import maintenance
 from core.exceptions import register_exception_handlers
 from core.rate_limit import limiter
 from core.schema import upgrade_schema
@@ -38,8 +39,11 @@ async def lifespan(app: FastAPI):
 
     await upgrade_schema()
 
+    sweeper = maintenance.start()
+
     yield
 
+    await maintenance.stop(sweeper)
     await engine.dispose()
     logger.info("Arret de CommitClarify")
 

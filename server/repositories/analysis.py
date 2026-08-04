@@ -1,7 +1,16 @@
 import uuid
 from collections.abc import Sequence
+from datetime import datetime
 
-from sqlalchemy import Row, delete as sql_delete, func, select
+from sqlalchemy import (
+    Row,
+    and_,
+    delete as sql_delete,
+    func,
+    or_,
+    select,
+    update as sql_update,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -84,6 +93,7 @@ async def replace_results(
             aspect=aspect,
             issues=result.get("issues", []),
             recommendations=result.get("recommendations", []),
+            metrics=result.get("metrics"),
             status=result.get("status", "clean"),
             created_at=utcnow(),
         ))
@@ -99,9 +109,18 @@ async def results_by_aspect(analysis_id: uuid.UUID, db: AsyncSession) -> dict[st
             "status": row.status,
             "issues": row.issues or [],
             "recommendations": row.recommendations or [],
+            "metrics": row.metrics,
         }
         for row in result.scalars().all()
     }
+
+
+RESERVED = "reserved"
+COMMITTED = "committed"
+
+
+def _live_reservation():
+    return and_(AnalysisLog.state == RESERVED, AnalysisLog.expires_at > utcnow())
 
 
 async def count_runs_today(github_id: int, db: AsyncSession) -> int:
@@ -109,10 +128,50 @@ async def count_runs_today(github_id: int, db: AsyncSession) -> int:
         select(func.count()).select_from(AnalysisLog).where(
             AnalysisLog.github_id == github_id,
             AnalysisLog.created_at >= start_of_day(),
+            or_(AnalysisLog.state == COMMITTED, _live_reservation()),
         )
     )
     return result.scalar() or 0
 
 
-def stage_run(github_id: int, db: AsyncSession) -> None:
-    db.add(AnalysisLog(github_id=github_id))
+def stage_reservation(
+    github_id: int,
+    analysis_id: uuid.UUID,
+    expires_at: datetime,
+    db: AsyncSession,
+) -> None:
+    db.add(AnalysisLog(
+        github_id=github_id,
+        analysis_id=analysis_id,
+        state=RESERVED,
+        expires_at=expires_at,
+    ))
+
+
+async def commit_reservation(analysis_id: uuid.UUID, db: AsyncSession) -> bool:
+    result = await db.execute(
+        sql_update(AnalysisLog)
+        .where(AnalysisLog.analysis_id == analysis_id, AnalysisLog.state == RESERVED)
+        .values(state=COMMITTED, expires_at=None)
+    )
+    return result.rowcount > 0
+
+
+async def release_reservation(analysis_id: uuid.UUID, db: AsyncSession) -> bool:
+    result = await db.execute(
+        sql_delete(AnalysisLog).where(
+            AnalysisLog.analysis_id == analysis_id,
+            AnalysisLog.state == RESERVED,
+        )
+    )
+    return result.rowcount > 0
+
+
+async def delete_expired_reservations(db: AsyncSession) -> int:
+    result = await db.execute(
+        sql_delete(AnalysisLog).where(
+            AnalysisLog.state == RESERVED,
+            AnalysisLog.expires_at <= utcnow(),
+        )
+    )
+    return result.rowcount

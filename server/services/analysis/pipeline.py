@@ -12,13 +12,21 @@ from core.clock import utcnow
 from core.exceptions import ConflictError
 from core.language import normalize, text
 from models.db import Analysis
-from repositories import analysis as analysis_repo
+from repositories import analysis as analysis_repo, scan_cache
+from repositories.scan_cache import ScanKey
 from services.ai.consistency_agent import run_quality_check, run_readme_check
 from services.ai.security_agent import run_gitignore_check, run_secrets_detection
-from services.github.repo_fetcher import coverage_of, fetch_repo_files
+from services.github.repo_fetcher import (
+    coverage_of,
+    fetch_repo_files,
+    get_repo_latest_sha,
+    get_repository,
+)
 from services.rag.chunker import chunk_files
 from services.rag.indexer import build_collection_name, collection_exists, index_chunks
-from services.scan import AXES, run_scan, to_issues
+from services.analysis import quota
+from services.scan import AXES, SCAN_VERSION, run_scan, to_issues
+from services.scan.config import CONFIG_HASH
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +50,8 @@ def sse_event(data: dict) -> str:
 
 
 def _is_stale(analysis: Analysis) -> bool:
-    return analysis.created_at < utcnow() - STALE_AFTER
+    started = analysis.phase_started_at or analysis.created_at
+    return started < utcnow() - STALE_AFTER
 
 
 def assert_scannable(analysis: Analysis) -> None:
@@ -96,6 +105,7 @@ async def run_scan_phase(
 
     try:
         analysis.status = SCANNING
+        analysis.phase_started_at = utcnow()
         await db.commit()
         logger.info(
             "Scan %s demarre pour %s (langue=%s)", analysis_id, analysis.repo_name, language,
@@ -107,41 +117,60 @@ async def run_scan_phase(
             "message": text("progress.fetching", language),
         })
 
-        repo_data = await fetch_repo_files(owner, repo, github_token)
-        coverage = coverage_of(repo_data)
+        repository = await get_repository(owner, repo, github_token)
+        repo_sha = await get_repo_latest_sha(owner, repo, github_token)
+        key = ScanKey(repository["id"], repo_sha, SCAN_VERSION, CONFIG_HASH, language)
 
-        yield sse_event({
-            "event": "progress",
-            "step": "fetching",
-            "message": text("progress.fetched", language, count=coverage["fetched_files"]),
-            "truncated": repo_data["truncated"],
-            "stats": repo_data["stats"],
-        })
+        scan = await scan_cache.get(key, db)
 
-        if not repo_data["tracked_paths"]:
-            logger.warning("Scan %s: aucun fichier versionne", analysis_id)
-            analysis.status = FAILED
-            await db.commit()
-            yield sse_event({"event": "error", "message": text("progress.no_files", language)})
-            return
+        if scan is not None:
+            yield sse_event({
+                "event": "progress",
+                "step": "scanning",
+                "message": text("progress.scanning", language),
+            })
+        else:
+            repo_data = await fetch_repo_files(
+                owner, repo, github_token, repo_sha=repo_sha,
+            )
+            coverage = coverage_of(repo_data)
 
-        yield sse_event({
-            "event": "progress",
-            "step": "scanning",
-            "message": text("progress.scanning", language),
-        })
+            yield sse_event({
+                "event": "progress",
+                "step": "fetching",
+                "message": text("progress.fetched", language, count=coverage["fetched_files"]),
+                "truncated": repo_data["truncated"],
+                "stats": repo_data["stats"],
+            })
 
-        scan = await run_scan(
-            repo_data["files"],
-            language,
-            tracked_paths=repo_data["tracked_paths"],
-            coverage=coverage,
-        )
+            if not repo_data["tracked_paths"]:
+                logger.warning("Scan %s: aucun fichier versionne", analysis_id)
+                analysis.status = FAILED
+                await db.commit()
+                yield sse_event({"event": "error", "message": text("progress.no_files", language)})
+                return
+
+            yield sse_event({
+                "event": "progress",
+                "step": "scanning",
+                "message": text("progress.scanning", language),
+            })
+
+            scan = await run_scan(
+                repo_data["files"],
+                language,
+                tracked_paths=repo_data["tracked_paths"],
+                coverage=coverage,
+            )
+            await scan_cache.put(key, scan, db)
 
         await _persist_scan(analysis, scan, db)
 
         analysis.status = SCANNED
-        analysis.repo_sha = repo_data["sha"]
+        analysis.repo_id = repository["id"]
+        analysis.repo_sha = repo_sha
+        analysis.scan_version = SCAN_VERSION
+        analysis.config_hash = CONFIG_HASH
         analysis.completed_at = utcnow()
         await db.commit()
 
@@ -163,7 +192,7 @@ async def run_scan_phase(
             "status": SCANNED,
             "complete": scan["complete"],
             "scan_version": scan["scan_version"],
-            "coverage": coverage,
+            "coverage": scan["coverage"],
             "can_deepen": True,
         })
 
@@ -185,6 +214,7 @@ async def run_ai_phase(
 
     try:
         analysis.status = ANALYZING
+        analysis.phase_started_at = utcnow()
         await db.commit()
         logger.info("Analyse IA %s demarree pour %s", analysis_id, analysis.repo_name)
 
@@ -200,6 +230,7 @@ async def run_ai_phase(
 
         if not files:
             logger.warning("Analyse IA %s: aucun fichier analysable", analysis_id)
+            await quota.release(analysis.id, db, reason="aucun fichier analysable")
             analysis.status = FAILED
             await db.commit()
             yield sse_event({"event": "error", "message": text("progress.no_files", language)})
@@ -267,7 +298,16 @@ async def run_ai_phase(
             produced[step] = result
             yield sse_event({"event": "step_complete", "step": step, "result": result})
 
+        if _every_agent_failed(produced):
+            logger.error("Analyse IA %s: tous les agents ont echoue", analysis_id)
+            await quota.release(analysis.id, db, reason="tous les agents en erreur")
+            analysis.status = FAILED
+            await db.commit()
+            yield sse_event({"event": "error", "message": text("progress.ai_failed", language)})
+            return
+
         await _merge_ai_into_scan(analysis, produced, db)
+        await quota.commit(analysis.id, db)
 
         analysis.status = COMPLETED
         analysis.repo_sha = repo_sha
@@ -279,6 +319,7 @@ async def run_ai_phase(
 
     except Exception as exc:
         logger.error("Analyse IA %s echouee: %s", analysis_id, exc, exc_info=True)
+        await quota.release(analysis.id, db, reason=type(exc).__name__)
         analysis.status = FAILED
         await db.commit()
         yield sse_event({"event": "error", "message": str(exc)})
@@ -298,6 +339,12 @@ async def _labelled(step: str, coro) -> tuple[str, dict]:
     return step, await coro
 
 
+def _every_agent_failed(produced: dict) -> bool:
+    return bool(produced) and all(
+        result.get("status") == "error" for result in produced.values()
+    )
+
+
 def _llm_only(issues: list[dict]) -> list[dict]:
     return [issue for issue in issues if issue.get("source", "llm") == "llm"]
 
@@ -308,6 +355,7 @@ async def _persist_scan(analysis: Analysis, scan: dict, db: AsyncSession) -> Non
             "status": result["status"],
             "issues": to_issues(result),
             "recommendations": [],
+            "metrics": result["metrics"],
         }
         for axis, result in scan["axes"].items()
     }
@@ -319,13 +367,16 @@ async def _merge_ai_into_scan(analysis: Analysis, produced: dict, db: AsyncSessi
     merged = {}
 
     for axis in AXES:
-        base = scanned.get(axis, {"status": "clean", "issues": [], "recommendations": []})
+        base = scanned.get(
+            axis, {"status": "clean", "issues": [], "recommendations": [], "metrics": None},
+        )
         issues = base["issues"] + _llm_only(produced.get(axis, {}).get("issues", []))
 
         merged[axis] = {
             "status": "issues_found" if issues else base["status"],
             "issues": issues,
             "recommendations": produced.get(axis, {}).get("recommendations", []),
+            "metrics": base.get("metrics"),
         }
 
     await analysis_repo.replace_results(analysis.id, merged, db)

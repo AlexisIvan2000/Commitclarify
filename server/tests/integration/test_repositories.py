@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 
 import pytest
 from sqlalchemy import func, select
@@ -89,7 +90,9 @@ async def test_remove_all_for_user_reports_the_count(db, test_user):
 
 @pytest.mark.asyncio
 async def test_quota_counter_only_sees_today(db, test_user):
-    analysis_repo.stage_run(test_user.github_id, db)
+    analysis_repo.stage_reservation(
+        test_user.github_id, uuid.uuid4(), utcnow() + timedelta(minutes=20), db,
+    )
     await db.commit()
 
     assert await analysis_repo.count_runs_today(test_user.github_id, db) == 1
