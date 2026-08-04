@@ -21,7 +21,7 @@ class ErrorBoundary extends Component {
     if (!this.state.failed) return this.props.children
 
     return (
-      <div className="dash-main">
+      <div className="callback-error">
         <ErrorState message={getStrings().errors.renderCrash} onRetry={this.reload} />
       </div>
     )
