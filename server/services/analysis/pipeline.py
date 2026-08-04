@@ -3,7 +3,6 @@ import json
 import logging
 
 from datetime import timedelta
-from pathlib import Path
 from typing import AsyncIterator
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +14,8 @@ from models.db import Analysis
 from repositories import analysis as analysis_repo, scan_cache
 from repositories.scan_cache import ScanKey
 from services.ai.consistency_agent import run_quality_check, run_readme_check
-from services.ai.security_agent import run_gitignore_check, run_secrets_detection
+from services.ai.triage import triage_axis
+from services.ai.validation import reject_invented_paths
 from services.github.repo_fetcher import (
     coverage_of,
     fetch_repo_files,
@@ -43,6 +43,9 @@ LEGACY_SCANNING = "processing"
 SCAN_IN_PROGRESS = (SCANNING, LEGACY_SCANNING)
 
 AGENT_STEPS = AXES
+
+TRIAGE_AXES = ("secrets_detection", "gitignore_check")
+DISCOVERY_AXES = ("quality_check", "readme_check")
 
 
 def sse_event(data: dict) -> str:
@@ -236,7 +239,6 @@ async def run_ai_phase(
             yield sse_event({"event": "error", "message": text("progress.no_files", language)})
             return
 
-        has_gitignore = any(Path(f["path"]).name == ".gitignore" for f in files)
         chunk_result = chunk_files(files)
         readme_chunks = chunk_result["readme_chunks"]
         user_id = str(analysis.user_id)
@@ -277,13 +279,15 @@ async def run_ai_phase(
             "message": text("progress.analyzing", language),
         })
 
+        scanned = await analysis_repo.results_by_aspect(analysis.id, db)
+        known_paths = set(repo_data["tracked_paths"])
+
         tasks = [
-            asyncio.create_task(_labelled(
-                "secrets_detection", run_secrets_detection(collection_name, files, language),
-            )),
-            asyncio.create_task(_labelled(
-                "gitignore_check", run_gitignore_check(collection_name, has_gitignore, language),
-            )),
+            asyncio.create_task(_labelled(axis, triage_axis(
+                axis, scanned.get(axis, {}).get("issues", []), language,
+            )))
+            for axis in TRIAGE_AXES
+        ] + [
             asyncio.create_task(_labelled(
                 "quality_check", run_quality_check(collection_name, files, language),
             )),
@@ -293,10 +297,13 @@ async def run_ai_phase(
         ]
 
         produced = {}
-        for future in asyncio.as_completed(tasks):
-            step, result = await future
-            produced[step] = result
-            yield sse_event({"event": "step_complete", "step": step, "result": result})
+        try:
+            for future in asyncio.as_completed(tasks):
+                step, result = await future
+                produced[step] = result
+                yield sse_event({"event": "step_complete", "step": step, "result": result})
+        finally:
+            await _drain_pending(tasks)
 
         if _every_agent_failed(produced):
             logger.error("Analyse IA %s: tous les agents ont echoue", analysis_id)
@@ -306,7 +313,7 @@ async def run_ai_phase(
             yield sse_event({"event": "error", "message": text("progress.ai_failed", language)})
             return
 
-        await _merge_ai_into_scan(analysis, produced, db)
+        await _merge_ai_into_scan(analysis, produced, known_paths, db)
         await quota.commit(analysis.id, db)
 
         analysis.status = COMPLETED
@@ -339,6 +346,14 @@ async def _labelled(step: str, coro) -> tuple[str, dict]:
     return step, await coro
 
 
+async def _drain_pending(tasks: list) -> None:
+    for task in tasks:
+        if not task.done():
+            task.cancel()
+
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+
 def _every_agent_failed(produced: dict) -> bool:
     return bool(produced) and all(
         result.get("status") == "error" for result in produced.values()
@@ -362,22 +377,43 @@ async def _persist_scan(analysis: Analysis, scan: dict, db: AsyncSession) -> Non
     await analysis_repo.replace_results(analysis.id, results, db)
 
 
-async def _merge_ai_into_scan(analysis: Analysis, produced: dict, db: AsyncSession) -> None:
+async def _merge_ai_into_scan(
+    analysis: Analysis,
+    produced: dict,
+    known_paths: set[str],
+    db: AsyncSession,
+) -> None:
     scanned = await analysis_repo.results_by_aspect(analysis.id, db)
     merged = {}
+    invented = 0
 
     for axis in AXES:
         base = scanned.get(
             axis, {"status": "clean", "issues": [], "recommendations": [], "metrics": None},
         )
-        issues = base["issues"] + _llm_only(produced.get(axis, {}).get("issues", []))
+        outcome = produced.get(axis, {})
+
+        if axis in TRIAGE_AXES:
+            issues = outcome.get("issues") or base["issues"]
+        else:
+            discovered, rejected = reject_invented_paths(
+                _llm_only(outcome.get("issues", [])), known_paths,
+            )
+            invented += rejected
+            issues = base["issues"] + discovered
 
         merged[axis] = {
             "status": "issues_found" if issues else base["status"],
             "issues": issues,
-            "recommendations": produced.get(axis, {}).get("recommendations", []),
+            "recommendations": outcome.get("recommendations", []),
             "metrics": base.get("metrics"),
         }
+
+    if invented:
+        logger.warning(
+            "Analyse %s: %d issue(s) LLM rejetee(s) pour chemin inexistant",
+            analysis.id, invented,
+        )
 
     await analysis_repo.replace_results(analysis.id, merged, db)
 

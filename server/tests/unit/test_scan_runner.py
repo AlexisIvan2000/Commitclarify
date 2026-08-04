@@ -160,11 +160,22 @@ async def test_findings_convert_to_the_legacy_issue_shape():
     assert issues
     for issue in issues:
         assert set(issue) == {
-            "severity", "title", "rule", "file_path", "description", "code_hint", "source",
-            "occurrences", "locations",
+            "id", "severity", "title", "rule", "file_path", "description", "code_hint",
+            "source", "context", "occurrences", "locations",
         }
         assert issue["file_path"]
         assert issue["occurrences"] == len(issue["locations"])
+
+
+@pytest.mark.asyncio
+async def test_the_persisted_issue_carries_the_identifier_the_verdicts_key_on():
+    scan = await run_scan(FILES)
+    issues = to_issues(scan["axes"]["secrets_detection"])
+
+    assert all(issue["id"] for issue in issues)
+    assert {issue["id"] for issue in issues} == {
+        finding["id"] for finding in scan["axes"]["secrets_detection"]["findings"]
+    }
 
 
 @pytest.mark.asyncio
@@ -197,6 +208,35 @@ def test_axis_result_sorts_the_most_severe_first():
     severities = [f["severity"] for f in axis_result("axis", findings)["findings"]]
 
     assert severities == ["critical", "medium", "low"]
+
+
+ADDED_FILE = {
+    "path": "settings.py",
+    "content": "DB = 'postgresql://user:motdepasse@db.example.com/app'\n",
+}
+
+
+@pytest.mark.asyncio
+async def test_only_the_delta_needs_a_new_verdict_between_two_commits():
+    before = findings_index(await run_scan(FILES))
+    after = findings_index(await run_scan(FILES + [ADDED_FILE]))
+
+    assert set(before) <= set(after), "un finding inchange a perdu son identifiant"
+
+    delta = set(after) - set(before)
+
+    assert delta
+    assert all("settings.py" in identifier for identifier in delta)
+
+
+@pytest.mark.asyncio
+async def test_removing_a_file_only_removes_its_own_findings():
+    full = findings_index(await run_scan(FILES + [ADDED_FILE]))
+    reduced = findings_index(await run_scan(FILES))
+
+    disappeared = set(full) - set(reduced)
+
+    assert all("settings.py" in identifier for identifier in disappeared)
 
 
 def test_identifier_ignores_the_line_but_the_finding_keeps_it():

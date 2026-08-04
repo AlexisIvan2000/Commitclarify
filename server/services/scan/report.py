@@ -1,6 +1,6 @@
 import hashlib
 
-SCAN_VERSION = 5
+SCAN_VERSION = 6
 
 SEVERITY_ORDER = ("critical", "high", "medium", "low", "info")
 
@@ -121,6 +121,7 @@ def unavailable(axis: str, reason: str, metrics: dict | None = None) -> dict:
 
 def to_issue(finding: dict) -> dict:
     return {
+        "id": finding["id"],
         "severity": LEGACY_SEVERITIES.get(finding["severity"], finding["severity"]),
         "title": finding["title"],
         "rule": finding["rule"],
@@ -128,6 +129,7 @@ def to_issue(finding: dict) -> dict:
         "description": finding["description"],
         "code_hint": finding["evidence"],
         "source": finding["source"],
+        "context": finding["context"],
         "occurrences": finding["occurrences"],
         "locations": finding["locations"],
     }

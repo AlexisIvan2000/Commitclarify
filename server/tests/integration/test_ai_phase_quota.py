@@ -18,12 +18,8 @@ FOUND = {
     "recommendations": [],
 }
 
-AGENTS = (
-    "run_secrets_detection",
-    "run_gitignore_check",
-    "run_quality_check",
-    "run_readme_check",
-)
+TRIAGE_AXES = ("secrets_detection", "gitignore_check")
+DISCOVERY_AGENTS = ("run_quality_check", "run_readme_check")
 
 
 async def _reserved_analysis(db, test_user) -> Analysis:
@@ -56,7 +52,16 @@ def _agents(*results, side_effect=None):
         "services.analysis.pipeline.build_collection_name", return_value="collection",
     ))
 
-    for name, result in zip(AGENTS, results):
+    by_axis = dict(zip(TRIAGE_AXES, results))
+
+    async def triage(axis, issues, language):
+        if side_effect:
+            raise side_effect
+        return by_axis[axis]
+
+    stack.enter_context(patch("services.analysis.pipeline.triage_axis", triage))
+
+    for name, result in zip(DISCOVERY_AGENTS, results[2:]):
         stack.enter_context(patch(
             f"services.analysis.pipeline.{name}",
             new_callable=AsyncMock,

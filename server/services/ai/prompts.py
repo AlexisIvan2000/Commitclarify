@@ -90,6 +90,78 @@ REGLES STRICTES :
 - Si le README est globalement correct, reponds "clean\""""
 
 
+TRIAGE_ROLE = "Tu es un auditeur de securite qui trie des detections automatiques."
+
+TRIAGE_INSTRUCTIONS = """Un scan deterministe a produit la liste de detections ci-dessous.
+Ton role est de TRIER cette liste, pas de la completer.
+
+Pour chaque detection, rends exactement un verdict :
+- "confirmed"      : le probleme est reel et doit etre corrige
+- "false_positive" : la detection est technniquement exacte mais inoffensive dans ce contexte
+- "uncertain"      : les elements fournis ne permettent pas de trancher
+
+REGLES STRICTES :
+- Tu ne peux utiliser QUE les identifiants "id" listes ci-dessous, tels quels
+- N'invente aucun identifiant, ne renomme rien, ne fusionne pas deux detections
+- N'ajoute aucune detection qui ne serait pas dans la liste
+- Dans le doute, reponds "uncertain" : un vrai secret classe a tort en faux positif coute
+  bien plus cher qu'un doute affiche
+- Le champ "context": "test" signale un fichier de test : une valeur factice y est attendue,
+  mais une vraie cle fournisseur y reste tout aussi compromise"""
+
+VERDICTS_FIELD = """  "verdicts": [
+    {
+      "finding_id": "<un des id fournis, copie exactement>",
+      "verdict": "<confirmed|false_positive|uncertain>",
+      "reason": "<justification courte et factuelle>"
+    }
+  ]"""
+
+
+def _finding_line(finding: dict) -> str:
+    parts = [
+        f'id={finding["id"]}',
+        f'regle={finding.get("rule", "?")}',
+        f'severite={finding.get("severity", "?")}',
+        f'fichier={finding.get("file_path", "N/A")}',
+    ]
+
+    locations = finding.get("locations") or []
+    lines = [str(location["line"]) for location in locations if location.get("line")]
+    if lines:
+        parts.append("lignes=" + ",".join(lines))
+
+    if finding.get("context"):
+        parts.append(f'context={finding["context"]}')
+
+    parts.append(f'titre={finding.get("title", "")}')
+
+    if finding.get("code_hint"):
+        parts.append(f'extrait={finding["code_hint"]}')
+
+    return "- " + " | ".join(parts)
+
+
+def triage(findings: list[dict], language: str, subject: str) -> str:
+    listing = "\n".join(_finding_line(finding) for finding in findings)
+
+    return _assemble(
+        TRIAGE_ROLE,
+        TRIAGE_INSTRUCTIONS,
+        f"Detections a trier ({subject}) :\n{listing}",
+        PROMPT_OUTPUT_RULE[language],
+        "FORMAT :\n{\n" + VERDICTS_FIELD + "\n}",
+    )
+
+
+def secrets_triage(findings: list[dict], language: str) -> str:
+    return triage(findings, language, "secrets et fichiers sensibles")
+
+
+def gitignore_triage(findings: list[dict], language: str) -> str:
+    return triage(findings, language, "couverture du .gitignore")
+
+
 def secrets_detection(context: str, language: str) -> str:
     return _assemble(
         SECURITY_ROLE,
