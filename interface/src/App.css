@@ -1936,3 +1936,276 @@ html {
     border-color: rgba(0, 0, 0, 0.15);
   }
 }
+
+/* ---- Rapport de scan ---- */
+
+.analysis-report {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.report-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.report-header h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #f0f0f0;
+}
+
+.report-provenance {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: 0.82rem;
+  color: #8a8a8a;
+}
+
+.report-provenance code {
+  padding: 0.1rem 0.4rem;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  font-size: 0.78rem;
+  color: #b0b0b0;
+}
+
+.report-axes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.analysis-result-card.issues_found { border-color: rgba(231, 163, 62, 0.25); }
+.analysis-result-card.partial { border-color: rgba(127, 140, 141, 0.3); }
+.analysis-result-card.unavailable { border-color: rgba(255, 255, 255, 0.08); }
+.analysis-result-card.error { border-color: rgba(231, 76, 60, 0.25); }
+
+.result-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ---- Couverture partielle ---- */
+
+.coverage-note {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  margin-bottom: 0.9rem;
+  background: rgba(127, 140, 141, 0.08);
+  border-left: 2px solid rgba(127, 140, 141, 0.5);
+  border-radius: 6px;
+  color: #a8a8a8;
+}
+
+.coverage-note svg { flex-shrink: 0; margin-top: 0.15rem; }
+
+.coverage-note-lead {
+  margin: 0 0 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #c0c0c0;
+}
+
+.coverage-note ul {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+/* ---- Détections ---- */
+
+.issue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.issue-row {
+  padding: 0.7rem 0.8rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+
+.issue-row-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.issue-severity {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.issue-title {
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: #e8e8e8;
+}
+
+.issue-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.45rem;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 20px;
+  font-size: 0.7rem;
+  color: #a0a0a0;
+  white-space: nowrap;
+}
+
+.issue-badge.test {
+  background: rgba(52, 152, 219, 0.15);
+  color: #7fb8e0;
+}
+
+.issue-row .issue-file {
+  display: block;
+  margin-top: 0.3rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.74rem;
+  color: #808080;
+  word-break: break-all;
+}
+
+.issue-description {
+  margin: 0.4rem 0 0;
+  font-size: 0.79rem;
+  line-height: 1.5;
+  color: #9a9a9a;
+}
+
+.issue-verdict {
+  margin: 0.5rem 0 0;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.76rem;
+  color: #909090;
+}
+
+.issue-verdict strong { color: #b8b8b8; font-weight: 600; }
+.issue-demoted { color: #7a7a7a; font-style: italic; }
+
+/* ---- Détections écartées ---- */
+
+.dismissed-section {
+  margin-top: 0.9rem;
+  padding-top: 0.8rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.dismissed-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.79rem;
+  color: #909090;
+  transition: color 0.2s ease;
+}
+
+.dismissed-toggle:hover { color: #c0c0c0; }
+
+.dismissed-hint {
+  margin: 0.5rem 0 0.7rem;
+  font-size: 0.75rem;
+  font-style: italic;
+  color: #7a7a7a;
+}
+
+/* ---- Métriques ---- */
+
+.metrics-panel {
+  margin-top: 0.9rem;
+  padding: 0.8rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+
+.metrics-panel h4 {
+  margin: 0 0 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #bbb;
+}
+
+.metrics-panel dl { margin: 0; }
+
+.metrics-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.28rem 0;
+  font-size: 0.78rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.metrics-row:last-child { border-bottom: none; }
+.metrics-row dt { color: #8a8a8a; }
+.metrics-row dd { margin: 0; color: #d0d0d0; text-align: right; }
+
+.metrics-caveat {
+  margin: 0.6rem 0 0;
+  font-size: 0.73rem;
+  font-style: italic;
+  color: #7a7a7a;
+}
+
+/* ---- Action de tri IA ---- */
+
+.deepen-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  max-width: 340px;
+}
+
+.deepen-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #8a8a8a;
+  text-align: right;
+}
+
+.deepen-balance {
+  margin: 0;
+  font-size: 0.73rem;
+  color: #7fb8e0;
+}
+
+.deepen-balance.exhausted { color: #e7a33e; }
+
+@media (max-width: 768px) {
+  .report-header { flex-direction: column; }
+  .deepen-action { align-items: stretch; max-width: none; }
+  .deepen-hint { text-align: left; }
+  .report-axes { grid-template-columns: 1fr; }
+}
