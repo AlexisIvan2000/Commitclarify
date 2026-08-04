@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { Icons } from '../design/icons'
 import useTranslation from '../translation/useTranslation'
 import HomeNavbar from './HomeNavbar'
 
@@ -11,8 +11,8 @@ function LegalLayout({ title, sections }) {
     <div className="page-wrapper fade-in">
       <HomeNavbar />
       <div className="legal-page">
-        <button className="back-btn" onClick={() => navigate(-1)}>
-          <ArrowLeft size={16} /> {t.actions.back}
+        <button className="btn btn-quiet" onClick={() => navigate(-1)}>
+          <Icons.back size={16} variant="Linear" /> {t.actions.back}
         </button>
 
         <h1>{title}</h1>

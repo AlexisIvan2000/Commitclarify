@@ -1,12 +1,13 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Eye, History as HistoryIcon, Trash2 } from 'lucide-react'
+import EmptyState from '@core/components/EmptyState'
 import ErrorState from '@core/components/ErrorState'
+import PageHeader from '@core/components/PageHeader'
 import Spinner from '@core/components/Spinner'
+import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
 import { formatShortDateTime } from '@core/utils/date'
-import AppNavbar from '../components/AppNavbar'
 import useAnalysisHistory from '../provider/useAnalysisHistory'
-import { isViewable, statusConfig } from '../../domain/status'
+import { isRunning, isViewable, statusConfig } from '../../domain/status'
 
 function HistoryPage() {
   const t = useTranslation()
@@ -18,83 +19,83 @@ function HistoryPage() {
   }
 
   return (
-    <div className="dash fade-in">
-      <AppNavbar />
+    <>
+      <PageHeader
+        icon={<Icons.history size={22} variant="Linear" />}
+        title={t.analysis.historyTitle}
+        count={analyses.length}
+        actions={analyses.length > 0 && (
+          <button className="btn btn-danger" onClick={handleRemoveAll}>
+            <Icons.trash size={14} variant="Linear" /> {t.actions.deleteAll}
+          </button>
+        )}
+      />
 
-      <main className="dash-main">
-        <button className="back-btn" onClick={() => navigate('/dashboard')}>
-          <ArrowLeft size={16} /> {t.actions.back}
-        </button>
+      {loading && <Spinner />}
 
-        <div className="dash-section-header">
-          <h2 className="dash-section-title">
-            <HistoryIcon size={22} />
-            {t.analysis.historyTitle} ({analyses.length})
-          </h2>
-          {analyses.length > 0 && (
-            <button className="repo-action-btn danger" onClick={handleRemoveAll}>
-              <Trash2 size={14} /> {t.actions.deleteAll}
+      {!loading && error && (
+        <ErrorState message={error || t.errors.historyFailed} onRetry={reload} />
+      )}
+
+      {actionError && <ErrorState message={actionError} />}
+
+      {!loading && !error && analyses.length === 0 && (
+        <EmptyState
+          icon={<Icons.history size={30} variant="Linear" />}
+          title={t.analysis.historyEmpty}
+          action={(
+            <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>
+              {t.actions.goToRepos} <Icons.forward size={14} variant="Linear" />
             </button>
           )}
-        </div>
+        />
+      )}
 
-        {loading && <Spinner />}
+      {!loading && !error && analyses.length > 0 && (
+        <div className="history-list">
+          {analyses.map((analysis) => {
+            const { icon: StatusIcon, color, label } = statusConfig(analysis.status)
 
-        {!loading && error && (
-          <ErrorState message={error || t.errors.historyFailed} onRetry={reload} />
-        )}
-
-        {actionError && <ErrorState message={actionError} />}
-
-        {!loading && !error && analyses.length === 0 && (
-          <p className="no-results">{t.analysis.historyEmpty}</p>
-        )}
-
-        {!loading && !error && analyses.length > 0 && (
-          <div className="history-list">
-            {analyses.map((analysis) => {
-              const { icon: StatusIcon, color, label } = statusConfig(analysis.status)
-
-              return (
-                <div key={analysis.id} className="history-item">
-                  <div className="history-item-left">
-                    <StatusIcon
-                      size={18}
-                      style={{ color, flexShrink: 0 }}
-                      className={analysis.status === 'processing' ? 'spinning' : ''}
-                    />
-                    <div className="history-item-info">
-                      <span className="history-repo">{analysis.repo_name}</span>
-                      <span className="history-meta">
-                        {label} &middot; {formatShortDateTime(analysis.created_at)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="history-item-actions">
-                    {isViewable(analysis) && (
-                      <button
-                        className="repo-action-btn"
-                        onClick={() => navigate(`/analysis/${analysis.id}`)}
-                      >
-                        <Eye size={14} /> {t.actions.view}
-                      </button>
-                    )}
-                    <button
-                      className="repo-action-btn danger"
-                      onClick={() => remove(analysis.id)}
-                      aria-label={`${t.actions.deleteAnalysisOf} ${analysis.repo_name}`}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+            return (
+              <div key={analysis.id} className="history-item">
+                <div className="history-item-left">
+                  <StatusIcon
+                    size={18}
+                    variant="Linear"
+                    style={{ color, flexShrink: 0 }}
+                    className={isRunning(analysis) ? 'spinning' : ''}
+                  />
+                  <div className="history-item-info">
+                    <span className="history-repo">{analysis.repo_name}</span>
+                    <span className="history-meta">
+                      {label} &middot; {formatShortDateTime(analysis.created_at)}
+                    </span>
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
-      </main>
-    </div>
+
+                <div className="history-item-actions">
+                  {isViewable(analysis) && (
+                    <button
+                      className="btn"
+                      onClick={() => navigate(`/report/${analysis.id}`)}
+                    >
+                      <Icons.view size={14} variant="Linear" /> {t.actions.view}
+                    </button>
+                  )}
+                  <button
+                    className="btn btn-danger"
+                    onClick={() => remove(analysis.id)}
+                    aria-label={`${t.actions.deleteAnalysisOf} ${analysis.repo_name}`}
+                  >
+                    <Icons.trash size={14} variant="Linear" />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </>
   )
 }
 

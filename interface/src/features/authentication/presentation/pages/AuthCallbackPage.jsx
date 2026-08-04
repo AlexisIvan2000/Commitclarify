@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
 import ErrorState from '@core/components/ErrorState'
 import Spinner from '@core/components/Spinner'
+import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
 import { messageOf } from '@core/network/errors'
 import { exchangeAuthCode, fetchCurrentUser } from '../../data/authApi'
@@ -43,10 +43,10 @@ function AuthCallbackPage() {
 
   if (error) {
     return (
-      <div className="dash-main fade-in">
+      <div className="callback-error fade-in">
         <ErrorState message={error} />
-        <button className="repo-action-btn primary" onClick={() => navigate('/', { replace: true })}>
-          <ArrowLeft size={16} /> {t.actions.backHome}
+        <button className="btn btn-primary" onClick={() => navigate('/', { replace: true })}>
+          <Icons.back size={16} variant="Linear" /> {t.actions.backHome}
         </button>
       </div>
     )

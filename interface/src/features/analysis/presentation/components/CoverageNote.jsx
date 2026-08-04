@@ -1,4 +1,4 @@
-import { EyeOff } from 'lucide-react'
+import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
 import { coverageGaps } from '../../domain/coverage'
 
@@ -10,7 +10,7 @@ function CoverageNote({ coverage }) {
 
   return (
     <div className="coverage-note">
-      <EyeOff size={15} />
+      <Icons.hidden size={15} variant="Linear" />
       <div>
         <p className="coverage-note-lead">{t.analysis.coverage.lead}</p>
         <ul>

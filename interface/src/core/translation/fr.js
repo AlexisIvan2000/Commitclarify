@@ -1,6 +1,16 @@
 const fr = {
   languageName: 'Français',
 
+  nav: {
+    repos: 'Dépôts',
+    scan: 'Scan',
+    report: 'Rapport',
+    history: 'Historique',
+    account: 'Compte',
+    freeScan: 'scan gratuit',
+    triagesLeft: 'tris IA restants aujourd\'hui',
+  },
+
   actions: {
     back: 'Retour',
     backHome: 'Retour à l\'accueil',

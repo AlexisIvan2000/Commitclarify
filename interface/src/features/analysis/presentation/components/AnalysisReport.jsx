@@ -1,4 +1,4 @@
-import { GitCommit } from 'lucide-react'
+import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
 import { formatDateTime } from '@core/utils/date'
 import { analyzedFiles, shortSha } from '../../domain/coverage'
@@ -17,7 +17,7 @@ function AnalysisReport({ analysis, results, pendingSteps = [], action = null })
         <div>
           <h2>{analysis?.repo_name}</h2>
           <p className="report-provenance">
-            <GitCommit size={14} />
+            <Icons.commit size={14} variant="Linear" />
             {analysis?.completed_at && formatDateTime(analysis.completed_at)}
             {sha && <code>{sha}</code>}
             {files && (

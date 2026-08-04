@@ -1,19 +1,25 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Globe, Lock } from 'lucide-react'
+import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
 
 function RepoCard({ repo, reportLanguage }) {
   const t = useTranslation()
   const navigate = useNavigate()
 
+  const target = `/scan?repo=${encodeURIComponent(repo.name)}&lang=${reportLanguage}`
+
   return (
     <div className="repo-card">
       <div className="repo-card-header">
         <span className="repo-name">{repo.name}</span>
         {repo.visibility === 'private' ? (
-          <span className="repo-badge private"><Lock size={12} /> {t.analysis.private}</span>
+          <span className="repo-badge private">
+            <Icons.private size={12} variant="Linear" /> {t.analysis.private}
+          </span>
         ) : (
-          <span className="repo-badge public"><Globe size={12} /> {t.analysis.public}</span>
+          <span className="repo-badge public">
+            <Icons.public size={12} variant="Linear" /> {t.analysis.public}
+          </span>
         )}
       </div>
 
@@ -22,11 +28,8 @@ function RepoCard({ repo, reportLanguage }) {
       <div className="repo-card-footer">
         {repo.language && <span className="repo-lang">{repo.language}</span>}
         <div className="repo-actions">
-          <button
-            className="repo-action-btn primary"
-            onClick={() => navigate(`/analyze/${repo.name}?lang=${reportLanguage}`)}
-          >
-            {t.actions.analyze} <ArrowRight size={14} />
+          <button className="btn btn-primary" onClick={() => navigate(target)}>
+            {t.actions.analyze} <Icons.forward size={14} variant="Linear" />
           </button>
         </div>
       </div>

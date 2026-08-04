@@ -1,6 +1,16 @@
 const en = {
   languageName: 'English',
 
+  nav: {
+    repos: 'Repositories',
+    scan: 'Scan',
+    report: 'Report',
+    history: 'History',
+    account: 'Account',
+    freeScan: 'free scan',
+    triagesLeft: 'AI triages left today',
+  },
+
   actions: {
     back: 'Back',
     backHome: 'Back to home',

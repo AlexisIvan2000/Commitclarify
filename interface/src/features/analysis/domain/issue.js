@@ -7,11 +7,11 @@ export const CONFIRMED = 'confirmed'
 export const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'info']
 
 export const SEVERITY_COLORS = {
-  critical: '#e74c3c',
-  high: '#e67e22',
-  medium: '#e7a33e',
-  low: '#7f8c8d',
-  info: '#95a5a6',
+  critical: 'var(--sev-critical-fg)',
+  high: 'var(--sev-high-fg)',
+  medium: 'var(--sev-medium-fg)',
+  low: 'var(--sev-low-fg)',
+  info: 'var(--sev-info-fg)',
 }
 
 function firstText(...candidates) {

@@ -1,46 +1,42 @@
-import {
-  ShieldAlert, FolderGit2, SearchCode, FileText,
-  CheckCircle, AlertTriangle, XCircle, EyeOff, HelpCircle,
-  Download, Database, Brain, ScanSearch,
-} from 'lucide-react'
 import { getStrings } from '@core/translation'
+import { Icons } from '@core/design/icons'
 
 export const ANALYSIS_STEPS = ['secrets_detection', 'gitignore_check', 'quality_check', 'readme_check']
 
 export const STEP_ICONS = {
-  secrets_detection: ShieldAlert,
-  gitignore_check: FolderGit2,
-  quality_check: SearchCode,
-  readme_check: FileText,
+  secrets_detection: Icons.secrets_detection,
+  gitignore_check: Icons.gitignore_check,
+  quality_check: Icons.quality_check,
+  readme_check: Icons.readme_check,
 }
 
 export const RESULT_ICONS = {
-  clean: CheckCircle,
-  partial: HelpCircle,
-  issues_found: AlertTriangle,
-  unavailable: EyeOff,
-  error: XCircle,
+  clean: Icons.clean,
+  partial: Icons.partial,
+  issues_found: Icons.issues_found,
+  unavailable: Icons.unavailable,
+  error: Icons.error,
 }
 
 export const RESULT_COLORS = {
-  clean: '#2ecc71',
-  partial: '#7f8c8d',
-  issues_found: '#e7a33e',
-  unavailable: '#888888',
-  error: '#e74c3c',
+  clean: 'var(--ok-fg)',
+  partial: 'var(--ink-soft)',
+  issues_found: 'var(--sev-high-fg)',
+  unavailable: 'var(--ink-faint)',
+  error: 'var(--sev-critical-fg)',
 }
 
 export const SCAN_STEPPER = [
-  { key: 'fetching', icon: Download },
-  { key: 'scanning', icon: ScanSearch },
-  { key: 'done', icon: CheckCircle },
+  { key: 'fetching', icon: Icons.fetching },
+  { key: 'scanning', icon: Icons.scan },
+  { key: 'done', icon: Icons.done },
 ]
 
 export const DEEPEN_STEPPER = [
-  { key: 'fetching', icon: Download },
-  { key: 'indexing', icon: Database },
-  { key: 'analyzing', icon: Brain },
-  { key: 'done', icon: CheckCircle },
+  { key: 'fetching', icon: Icons.fetching },
+  { key: 'indexing', icon: Icons.indexing },
+  { key: 'analyzing', icon: Icons.aiAnalyzing },
+  { key: 'done', icon: Icons.done },
 ]
 
 export function stepLabel(step) {
@@ -56,5 +52,5 @@ export function resultLabel(status) {
 }
 
 export function resultColor(status) {
-  return RESULT_COLORS[status] || '#888888'
+  return RESULT_COLORS[status] || 'var(--ink-faint)'
 }

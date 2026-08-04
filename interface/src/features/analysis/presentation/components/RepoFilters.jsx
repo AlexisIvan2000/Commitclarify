@@ -1,4 +1,4 @@
-import { Globe, Lock, Search } from 'lucide-react'
+import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
 
 function RepoFilters({
@@ -7,6 +7,7 @@ function RepoFilters({
   search, onSearchChange,
 }) {
   const t = useTranslation()
+
   return (
     <div className="repo-filters">
       <div className="filter-groups">
@@ -23,13 +24,13 @@ function RepoFilters({
               className={`filter-tab ${visibility === 'public' ? 'active' : ''}`}
               onClick={() => onVisibilityChange('public')}
             >
-              <Globe size={13} /> {t.analysis.public}
+              <Icons.public size={13} variant="Linear" /> {t.analysis.public}
             </button>
             <button
               className={`filter-tab ${visibility === 'private' ? 'active' : ''}`}
               onClick={() => onVisibilityChange('private')}
             >
-              <Lock size={13} /> {t.analysis.private}
+              <Icons.private size={13} variant="Linear" /> {t.analysis.private}
             </button>
           </div>
         </div>
@@ -59,7 +60,7 @@ function RepoFilters({
       </div>
 
       <div className="filter-search">
-        <Search size={16} />
+        <Icons.search size={16} variant="Linear" />
         <input
           type="text"
           placeholder={t.actions.search}

@@ -1,5 +1,11 @@
-import { CheckCircle, Loader, XCircle } from 'lucide-react'
+import { Icons } from '@core/design/icons'
 import { SCAN_STEPPER, stepperLabel } from '../../domain/steps'
+
+const STATE_ICONS = {
+  active: Icons.running,
+  completed: Icons.done,
+  error: Icons.error,
+}
 
 function stateFor(index, activeIndex, phase) {
   if (phase === 'error') {
@@ -12,15 +18,6 @@ function stateFor(index, activeIndex, phase) {
   return 'pending'
 }
 
-function StateIcon({ state, fallback }) {
-  const Fallback = fallback
-
-  if (state === 'active') return <Loader size={20} className="spinning" />
-  if (state === 'completed') return <CheckCircle size={20} />
-  if (state === 'error') return <XCircle size={20} />
-  return <Fallback size={20} />
-}
-
 function AnalysisStepper({ currentStep, messages, phase, steps = SCAN_STEPPER }) {
   const activeIndex = steps.findIndex(step => step.key === currentStep)
 
@@ -28,12 +25,17 @@ function AnalysisStepper({ currentStep, messages, phase, steps = SCAN_STEPPER })
     <div className="analysis-stepper">
       {steps.map((step, index) => {
         const state = stateFor(index, activeIndex, phase)
+        const StepIcon = STATE_ICONS[state] || step.icon
 
         return (
           <div key={step.key} style={{ display: 'contents' }}>
             <div className={`stepper-step ${state}`}>
               <div className="stepper-icon">
-                <StateIcon state={state} fallback={step.icon} />
+                <StepIcon
+                  size={20}
+                  variant="Linear"
+                  className={state === 'active' ? 'spinning' : ''}
+                />
               </div>
               <span className="stepper-label">{stepperLabel(step.key)}</span>
               {messages[step.key] && <span className="stepper-message">{messages[step.key]}</span>}

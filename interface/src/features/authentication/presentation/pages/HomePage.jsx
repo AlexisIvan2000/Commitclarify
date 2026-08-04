@@ -1,14 +1,14 @@
 import { Link } from 'react-router-dom'
-import { FileText, FolderGit2, SearchCode, ShieldAlert } from 'lucide-react'
 import HomeNavbar from '@core/components/HomeNavbar'
+import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
 import GithubLoginButton from '../components/GithubLoginButton'
 
 const FEATURE_ICONS = {
-  secrets: ShieldAlert,
-  gitignore: FolderGit2,
-  quality: SearchCode,
-  readme: FileText,
+  secrets: Icons.secrets_detection,
+  gitignore: Icons.gitignore_check,
+  quality: Icons.quality_check,
+  readme: Icons.readme_check,
 }
 
 function HomePage() {
@@ -36,12 +36,12 @@ function HomePage() {
         <h2 className="section-title">{t.home.featuresTitle}</h2>
         <div className="features-grid">
           {t.home.features.map((feature) => {
-            const Icon = FEATURE_ICONS[feature.key]
+            const FeatureIcon = FEATURE_ICONS[feature.key]
 
             return (
               <div key={feature.key} className="feature-card">
                 <div className="feature-card-header">
-                  <Icon size={20} />
+                  <FeatureIcon size={20} variant="Linear" />
                   <h3>{feature.title}</h3>
                 </div>
                 <p>{feature.text}</p>

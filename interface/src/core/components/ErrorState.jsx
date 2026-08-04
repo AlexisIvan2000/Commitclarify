@@ -1,4 +1,4 @@
-import { RotateCw, XCircle } from 'lucide-react'
+import { Icons } from '../design/icons'
 import useTranslation from '../translation/useTranslation'
 
 function ErrorState({ message, onRetry }) {
@@ -6,11 +6,11 @@ function ErrorState({ message, onRetry }) {
 
   return (
     <div className="analysis-error" role="alert">
-      <XCircle size={20} />
+      <Icons.error size={18} variant="Linear" />
       <span>{message || t.errors.unexpected}</span>
       {onRetry && (
-        <button className="repo-action-btn" onClick={onRetry}>
-          <RotateCw size={14} /> {t.actions.retry}
+        <button className="btn" onClick={onRetry}>
+          <Icons.retry size={14} variant="Linear" /> {t.actions.retry}
         </button>
       )}
     </div>

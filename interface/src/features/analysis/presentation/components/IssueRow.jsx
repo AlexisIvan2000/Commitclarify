@@ -1,5 +1,5 @@
-import { FlaskConical } from 'lucide-react'
 import CodeHighlight from '@core/components/CodeHighlight'
+import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
 import { severityColor, verdictLabel } from '../../domain/issue'
 
@@ -21,7 +21,7 @@ function IssueRow({ issue }) {
 
         {issue.isTestFile && (
           <span className="issue-badge test">
-            <FlaskConical size={12} />
+            <Icons.test size={12} variant="Linear" />
             {t.analysis.testFile}
           </span>
         )}

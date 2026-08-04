@@ -1,4 +1,4 @@
-import { Sparkles } from 'lucide-react'
+import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
 
 function DeepenAction({ remaining, running, onStart }) {
@@ -9,11 +9,11 @@ function DeepenAction({ remaining, running, onStart }) {
     <div className="deepen-action">
       <button
         type="button"
-        className="repo-action-btn primary"
+        className="btn btn-primary"
         onClick={onStart}
         disabled={running || exhausted}
       >
-        <Sparkles size={14} />
+        <Icons.triage size={14} variant="Linear" />
         {running ? t.analysis.deepen.running : t.analysis.deepen.label}
       </button>
 

@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react'
-import { GitFork } from 'lucide-react'
 import ErrorState from '@core/components/ErrorState'
-import LanguageSwitch from '@core/components/LanguageSwitch'
+import PageHeader from '@core/components/PageHeader'
 import Spinner from '@core/components/Spinner'
+import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
-import AppNavbar from '../components/AppNavbar'
 import RepoCard from '../components/RepoCard'
 import RepoFilters from '../components/RepoFilters'
 import useReportLanguage from '../provider/useReportLanguage'
@@ -13,7 +12,7 @@ import useRepos from '../provider/useRepos'
 function DashboardPage() {
   const t = useTranslation()
   const { repos, loading, error, reload } = useRepos()
-  const { reportLanguage, setReportLanguage } = useReportLanguage()
+  const { reportLanguage } = useReportLanguage()
   const [visibility, setVisibility] = useState(null)
   const [activeLanguage, setActiveLanguage] = useState(null)
   const [search, setSearch] = useState('')
@@ -35,57 +34,45 @@ function DashboardPage() {
   }, [repos, visibility, activeLanguage, search])
 
   return (
-    <div className="dash fade-in">
-      <AppNavbar />
+    <>
+      <PageHeader
+        icon={<Icons.repos size={22} variant="Linear" />}
+        title={t.analysis.reposTitle}
+        count={filteredRepos.length}
+      />
 
-      <main className="dash-main">
-        <div className="dash-section-header">
-          <h2 className="dash-section-title">
-            <GitFork size={22} />
-            {t.analysis.reposTitle} ({filteredRepos.length})
-          </h2>
-        </div>
+      {loading && <Spinner />}
 
-        {loading && <Spinner />}
+      {!loading && error && (
+        <ErrorState message={error || t.errors.reposFailed} onRetry={reload} />
+      )}
 
-        {!loading && error && (
-          <ErrorState message={error || t.errors.reposFailed} onRetry={reload} />
-        )}
+      {!loading && !error && (
+        <>
+          <RepoFilters
+            visibility={visibility}
+            onVisibilityChange={setVisibility}
+            languages={languages}
+            activeLanguage={activeLanguage}
+            onLanguageChange={setActiveLanguage}
+            search={search}
+            onSearchChange={setSearch}
+          />
 
-        {!loading && !error && (
-          <>
-            <RepoFilters
-              visibility={visibility}
-              onVisibilityChange={setVisibility}
-              languages={languages}
-              activeLanguage={activeLanguage}
-              onLanguageChange={setActiveLanguage}
-              search={search}
-              onSearchChange={setSearch}
-            />
+          <div className="repo-grid">
+            {filteredRepos.map(repo => (
+              <RepoCard key={repo.id} repo={repo} reportLanguage={reportLanguage} />
+            ))}
+          </div>
 
-            <LanguageSwitch
-              label={t.analysis.reportLanguage}
-              hint={t.analysis.reportLanguageHint}
-              value={reportLanguage}
-              onChange={setReportLanguage}
-            />
-
-            <div className="repo-grid">
-              {filteredRepos.map(repo => (
-                <RepoCard key={repo.id} repo={repo} reportLanguage={reportLanguage} />
-              ))}
-            </div>
-
-            {filteredRepos.length === 0 && (
-              <p className="no-results">
-                {repos.length === 0 ? t.analysis.reposEmpty : t.analysis.reposNoMatch}
-              </p>
-            )}
-          </>
-        )}
-      </main>
-    </div>
+          {filteredRepos.length === 0 && (
+            <p className="no-results">
+              {repos.length === 0 ? t.analysis.reposEmpty : t.analysis.reposNoMatch}
+            </p>
+          )}
+        </>
+      )}
+    </>
   )
 }
 

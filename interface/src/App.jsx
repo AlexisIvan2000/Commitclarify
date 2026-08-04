@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import ErrorBoundary from '@core/components/ErrorBoundary'
 import ErrorState from '@core/components/ErrorState'
 import Spinner from '@core/components/Spinner'
@@ -8,14 +8,17 @@ import TermsPage from '@core/pages/TermsPage'
 import LanguageProvider from '@core/translation/LanguageProvider'
 import AuthProvider from '@features/authentication/presentation/provider/AuthProvider'
 import useAuth from '@features/authentication/presentation/provider/useAuth'
+import AccountPage from '@features/authentication/presentation/pages/AccountPage'
 import AuthCallbackPage from '@features/authentication/presentation/pages/AuthCallbackPage'
 import HomePage from '@features/authentication/presentation/pages/HomePage'
 import { SESSION_STATUS } from '@features/authentication/domain/session'
 import QuotaProvider from '@features/analysis/presentation/provider/QuotaProvider'
-import AnalysisDetailPage from '@features/analysis/presentation/pages/AnalysisDetailPage'
-import AnalysisStreamPage from '@features/analysis/presentation/pages/AnalysisStreamPage'
 import DashboardPage from '@features/analysis/presentation/pages/DashboardPage'
 import HistoryPage from '@features/analysis/presentation/pages/HistoryPage'
+import LatestReportPage from '@features/analysis/presentation/pages/LatestReportPage'
+import ReportPage from '@features/analysis/presentation/pages/ReportPage'
+import ScanPage from '@features/analysis/presentation/pages/ScanPage'
+import AppShell from './AppShell'
 import './App.css'
 
 function SessionGate({ children }) {
@@ -24,7 +27,7 @@ function SessionGate({ children }) {
   if (status === SESSION_STATUS.loading) return <Spinner />
   if (status === SESSION_STATUS.unavailable) {
     return (
-      <div className="dash-main">
+      <div className="app-content">
         <ErrorState message={error} onRetry={retry} />
       </div>
     )
@@ -43,6 +46,21 @@ function LandingRoute() {
   return <HomePage />
 }
 
+function LegacyScanRoute() {
+  const { owner, repo } = useParams()
+  const [searchParams] = useSearchParams()
+  const language = searchParams.get('lang')
+  const query = `repo=${encodeURIComponent(`${owner}/${repo}`)}${language ? `&lang=${language}` : ''}`
+
+  return <Navigate to={`/scan?${query}`} replace />
+}
+
+function LegacyReportRoute() {
+  const { analysisId } = useParams()
+
+  return <Navigate to={`/report/${analysisId}`} replace />
+}
+
 function AppRoutes() {
   const location = useLocation()
   const { status } = useAuth()
@@ -55,16 +73,19 @@ function AppRoutes() {
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
-          <Route path="/dashboard" element={<SessionGate><DashboardPage /></SessionGate>} />
-          <Route
-            path="/analyze/:owner/:repo"
-            element={<SessionGate><AnalysisStreamPage /></SessionGate>}
-          />
-          <Route
-            path="/analysis/:analysisId"
-            element={<SessionGate><AnalysisDetailPage /></SessionGate>}
-          />
-          <Route path="/history" element={<SessionGate><HistoryPage /></SessionGate>} />
+
+          <Route element={<SessionGate><AppShell /></SessionGate>}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/scan" element={<ScanPage />} />
+            <Route path="/report" element={<LatestReportPage />} />
+            <Route path="/report/:analysisId" element={<ReportPage />} />
+            <Route path="/history" element={<HistoryPage />} />
+            <Route path="/account" element={<AccountPage />} />
+          </Route>
+
+          <Route path="/analyze/:owner/:repo" element={<LegacyScanRoute />} />
+          <Route path="/analysis/:analysisId" element={<LegacyReportRoute />} />
+
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </ErrorBoundary>

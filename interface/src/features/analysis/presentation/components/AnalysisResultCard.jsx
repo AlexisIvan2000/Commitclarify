@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle, ChevronDown, ChevronRight, Loader } from 'lucide-react'
+import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
 import { normalizeIssues, normalizeRecommendations, splitByVerdict } from '../../domain/issue'
 import { RESULT_ICONS, STEP_ICONS, resultColor, resultLabel, stepLabel } from '../../domain/steps'
@@ -11,27 +11,32 @@ function AnalysisResultCard({ aspect, result, pending, coverage }) {
   const t = useTranslation()
   const [showDismissed, setShowDismissed] = useState(false)
 
-  const Icon = STEP_ICONS[aspect] || CheckCircle
-  const StatusIcon = RESULT_ICONS[result?.status] || CheckCircle
+  const AspectIcon = STEP_ICONS[aspect] || Icons.clean
+  const StatusIcon = RESULT_ICONS[result?.status] || Icons.clean
   const completed = Boolean(result)
 
   const { retained, dismissed } = splitByVerdict(normalizeIssues(result?.issues))
   const recommendations = normalizeRecommendations(result?.recommendations)
-  const DismissedIcon = showDismissed ? ChevronDown : ChevronRight
+  const DismissedIcon = showDismissed ? Icons.expand : Icons.collapse
 
   return (
     <div className={`analysis-result-card ${completed ? result.status : 'pending'}`}>
       <div className="result-card-header">
-        <Icon size={20} />
+        <AspectIcon size={20} variant="Linear" />
         <h3>{stepLabel(aspect)}</h3>
         {completed && (
           <span className="result-status" style={{ color: resultColor(result.status) }}>
-            <StatusIcon size={16} />
+            <StatusIcon size={16} variant="Linear" />
             {resultLabel(result.status)}
           </span>
         )}
         {!completed && pending && (
-          <Loader size={18} className="spinning" style={{ marginLeft: 'auto', color: '#888888' }} />
+          <Icons.running
+            size={18}
+            variant="Linear"
+            className="spinning"
+            style={{ marginLeft: 'auto', color: 'var(--ink-faint)' }}
+          />
         )}
       </div>
 
@@ -59,7 +64,7 @@ function AnalysisResultCard({ aspect, result, pending, coverage }) {
               className="dismissed-toggle"
               onClick={() => setShowDismissed(previous => !previous)}
             >
-              <DismissedIcon size={14} />
+              <DismissedIcon size={14} variant="Linear" />
               {t.analysis.dismissedTitle.replace('{count}', dismissed.length)}
             </button>
             {showDismissed && (

@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="app">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Serif:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:#f2f1ed; }
+  * { box-sizing: border-box; }
+  a { color:#1f4f7a; text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color:#12354f; }
+  ::selection { background:#dbe6ef; }
+  @keyframes ccIn { from { opacity:0; transform: translateY(4px); } to { opacity:1; transform:none; } }
+  @keyframes ccPulse { 0%,100% { opacity:.35 } 50% { opacity:1 } }
+  @keyframes ccSweep { from { transform: translateX(-100%) } to { transform: translateX(300%) } }
+</style>
+</helmet>
+
+<div style="min-height:100vh; background:#f2f1ed; color:#1b1b1e; font-family:'IBM Plex Sans',system-ui,sans-serif; font-size:15px; line-height:1.5; padding-bottom:76px;">
+
+  <!-- ============ CHROME APPLICATION ============ -->
+  <sc-if value="{{ showChrome }}" hint-placeholder-val="{{ true }}">
+    <div style="position:sticky; top:0; z-index:40; background:#fbfaf8; border-bottom:1px solid #e0ded7;">
+      <div style="max-width:1180px; margin:0 auto; padding:0 32px; height:60px; display:flex; align-items:center; gap:40px;">
+        <div style="display:flex; align-items:baseline; gap:9px;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:15px; letter-spacing:-0.2px;">CommitClarify</span>
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:#7d7c76; border:1px solid #dedcd4; border-radius:3px; padding:1px 5px; white-space:nowrap; flex:none;">scan gratuit</span>
+        </div>
+        <nav style="display:flex; gap:2px; margin-left:auto;">
+          <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="4">
+            <button type="button" onClick="{{ n.go }}" style="{{ n.style }}">{{ n.label }}</button>
+          </sc-for>
+        </nav>
+        <div style="display:flex; align-items:center; gap:10px; padding-left:18px; border-left:1px solid #e6e4dd;">
+          <div style="width:26px; height:26px; border-radius:50%; background:#dcd9d0; border:1px solid #cfccc2;"></div>
+          <span style="font-size:13.5px; color:#4b4a45;">marc-lefevre</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ 1. ACCUEIL ============ -->
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+    <div style="max-width:1180px; margin:0 auto; padding:0 32px;">
+      <div style="height:60px; display:flex; align-items:center; justify-content:space-between;">
+        <span style="font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:15px;">CommitClarify</span>
+        <div style="display:flex; gap:20px; font-size:13.5px; color:#5c5b55;">
+          <a href="#" onClick="{{ goLegal }}" style="color:#5c5b55; text-decoration:none;">Confidentialité</a>
+          <span style="color:#a5a39b;">FR</span>
+        </div>
+      </div>
+
+      <sc-if value="{{ homeError }}" hint-placeholder-val="{{ false }}">
+        <div style="margin:8px 0 0; border:1px solid #e8c2ba; background:#fcefec; border-radius:6px; padding:14px 16px; display:flex; gap:12px; animation:ccIn .2s ease both;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600; color:#8f1d14; padding-top:1px;">✕</span>
+          <div>
+            <div style="font-weight:600; font-size:14px; color:#8f1d14;">Connexion GitHub interrompue</div>
+            <div style="font-size:13.5px; color:#6b3a33; margin-top:3px;">Vous avez refusé l'accès, ou la fenêtre a été fermée avant la fin. CommitClarify demande uniquement la lecture du contenu de vos dépôts — aucune écriture.</div>
+            <button type="button" onClick="{{ clearHomeError }}" style="margin-top:10px; font:inherit; font-size:13px; font-weight:500; background:#fff; border:1px solid #e0c7c1; color:#8f1d14; border-radius:5px; padding:6px 12px; cursor:pointer;">Réessayer</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="padding:76px 0 64px; max-width:760px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:#7d7c76;">Analyse déterministe de dépôt</div>
+        <h1 style="font-family:'IBM Plex Serif',Georgia,serif; font-size:52px; line-height:1.08; font-weight:600; letter-spacing:-0.02em; margin:18px 0 0; text-wrap:balance;">Ce qui cloche dans votre dépôt, avant que quelqu'un d'autre ne le trouve.</h1>
+        <p style="font-size:18px; line-height:1.55; color:#4b4a45; margin:22px 0 0; max-width:640px; text-wrap:pretty;">Connectez votre compte GitHub, choisissez un dépôt, obtenez un rapport en une quinzaine de secondes : secrets exposés, couverture du <code style="font-family:'IBM Plex Mono',monospace; font-size:16px; background:#e9e7e0; padding:1px 5px; border-radius:3px;">.gitignore</code>, qualité du code, documentation.</p>
+        <div style="display:flex; align-items:center; gap:18px; margin-top:34px; flex-wrap:wrap;">
+          <button type="button" onClick="{{ goRepos }}" style="font:inherit; font-size:15px; font-weight:500; background:#1b1b1e; color:#fbfaf8; border:none; border-radius:6px; padding:13px 22px; cursor:pointer; display:flex; align-items:center; gap:10px;" style-hover="background:#000">
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:15px;">⌥</span> Se connecter avec GitHub
+          </button>
+          <span style="font-size:13.5px; color:#6b6a64;">Lecture seule. Aucune écriture sur vos dépôts.</span>
+        </div>
+        <div style="display:flex; gap:26px; flex-wrap:wrap; margin-top:30px; padding-top:26px; border-top:1px solid #e0ded7; font-size:14px; color:#4b4a45;">
+          <sc-for list="{{ homeClaims }}" as="c" hint-placeholder-count="3">
+            <span style="display:flex; gap:8px; align-items:baseline;"><span style="font-family:'IBM Plex Mono',monospace; color:#2f6b46; font-size:12px;">✓</span>{{ c }}</span>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid #e0ded7; padding:44px 0 30px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:#7d7c76; margin-bottom:26px;">Quatre axes, sur chaque scan</div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:1px; background:#e0ded7; border:1px solid #e0ded7; border-radius:8px; overflow:hidden;">
+          <sc-for list="{{ axisPitch }}" as="a" hint-placeholder-count="4">
+            <div style="background:#fbfaf8; padding:24px 22px 26px;">
+              <div style="font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:#9a9891;">0{{ a.n }}</div>
+              <div style="font-weight:600; font-size:15.5px; margin-top:8px;">{{ a.title }}</div>
+              <div style="font-size:14px; color:#56554f; margin-top:8px; line-height:1.5; text-wrap:pretty;">{{ a.body }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid #e0ded7; padding:44px 0 90px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:56px;">
+        <div>
+          <h2 style="font-family:'IBM Plex Serif',Georgia,serif; font-size:26px; font-weight:600; margin:0; letter-spacing:-0.01em;">Le scan ne passe par aucune IA</h2>
+          <p style="font-size:15px; color:#4b4a45; margin:14px 0 0; line-height:1.6; text-wrap:pretty;">C'est de la reconnaissance de motifs, de la lecture d'arbre Git et du calcul de métriques. Rien de votre code n'est envoyé à un modèle de langage. Le résultat est reproductible : même commit, même rapport.</p>
+        </div>
+        <div>
+          <h2 style="font-family:'IBM Plex Serif',Georgia,serif; font-size:26px; font-weight:600; margin:0; letter-spacing:-0.01em;">Et si vous le demandez, un tri</h2>
+          <p style="font-size:15px; color:#4b4a45; margin:14px 0 0; line-height:1.6; text-wrap:pretty;">Un bouton, dans le rapport, fait relire les détections par une IA qui écarte les faux positifs et explique le reste. Elle n'ajoute jamais de détection. Trois tris par jour ; le scan, lui, reste illimité.</p>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ 2. LISTE DES DÉPÔTS ============ -->
+  <sc-if value="{{ isRepos }}" hint-placeholder-val="{{ true }}">
+    <div style="max-width:1180px; margin:0 auto; padding:36px 32px 60px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:32px; flex-wrap:wrap;">
+        <div>
+          <h1 style="font-family:'IBM Plex Serif',Georgia,serif; font-size:30px; font-weight:600; margin:0; letter-spacing:-0.01em;">Vos dépôts</h1>
+          <p style="font-size:14.5px; color:#5c5b55; margin:8px 0 0;">Dépôts personnels, privés, et ceux des organisations dont vous êtes membre.</p>
+        </div>
+        <div style="border:1px solid #e0ded7; background:#fbfaf8; border-radius:7px; padding:12px 14px; max-width:340px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <label style="font-size:13px; font-weight:500; color:#3a3934;">Langue du rapport</label>
+            <div style="display:flex; border:1px solid #ddd9d0; border-radius:5px; overflow:hidden;">
+              <sc-for list="{{ reportLangs }}" as="l" hint-placeholder-count="2">
+                <button type="button" onClick="{{ l.pick }}" style="{{ l.style }}">{{ l.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="font-size:12.5px; color:#6b6a64; margin-top:9px; line-height:1.45;">Figée au lancement du scan. Un rapport rédigé en français le reste, même si vous basculez l'interface en anglais.</div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:26px; flex-wrap:wrap; align-items:center;">
+        <div style="flex:1 1 260px; min-width:220px; display:flex; align-items:center; gap:9px; background:#fbfaf8; border:1px solid #ddd9d0; border-radius:6px; padding:9px 12px;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#9a9891;">/</span>
+          <span style="font-size:14px; color:#3a3934;">{{ repoQuery }}</span>
+          <span style="font-size:14px; color:#b3b1a9;">{{ repoQueryPlaceholder }}</span>
+        </div>
+        <sc-for list="{{ repoFilters }}" as="f" hint-placeholder-count="3">
+          <button type="button" onClick="{{ f.pick }}" style="{{ f.style }}">{{ f.label }}</button>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ reposLoading }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:18px; border:1px solid #e0ded7; border-radius:8px; overflow:hidden;">
+          <sc-for list="{{ skeletonRows }}" as="s" hint-placeholder-count="5">
+            <div style="background:#fbfaf8; border-bottom:1px solid #eceae3; padding:18px 20px; display:flex; gap:14px; align-items:center;">
+              <div style="height:13px; width:190px; background:#e8e6df; border-radius:3px; animation:ccPulse 1.4s ease-in-out infinite;"></div>
+              <div style="height:11px; width:300px; background:#efedE7; border-radius:3px; animation:ccPulse 1.4s ease-in-out infinite;"></div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ reposEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:18px; border:1px dashed #d6d3ca; border-radius:8px; padding:56px 32px; text-align:center; background:#fbfaf8;">
+          <div style="font-family:'IBM Plex Serif',Georgia,serif; font-size:20px; font-weight:600;">Aucun dépôt sur ce compte</div>
+          <div style="font-size:14.5px; color:#5c5b55; margin-top:8px; max-width:440px; margin-left:auto; margin-right:auto;">CommitClarify ne voit que les dépôts auxquels le jeton donne accès. Si vos dépôts appartiennent à une organisation, l'accès doit y être autorisé.</div>
+          <a href="#" style="display:inline-block; margin-top:16px; font-size:14px;">Revoir les autorisations sur GitHub</a>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ reposNoMatch }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:18px; border:1px dashed #d6d3ca; border-radius:8px; padding:48px 32px; text-align:center; background:#fbfaf8;">
+          <div style="font-size:16px; font-weight:600;">Aucun dépôt ne correspond</div>
+          <div style="font-size:14px; color:#5c5b55; margin-top:6px;">« payments » + Privés + TypeScript ne donne rien parmi vos 34 dépôts.</div>
+          <button type="button" onClick="{{ resetFilters }}" style="margin-top:16px; font:inherit; font-size:13.5px; font-weight:500; background:#fff; border:1px solid #ddd9d0; border-radius:5px; padding:8px 14px; cursor:pointer;">Effacer les filtres</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ reposError }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:18px; border:1px solid #e8c2ba; background:#fcefec; border-radius:8px; padding:22px 24px;">
+          <div style="font-weight:600; font-size:15px; color:#8f1d14;">Impossible de récupérer vos dépôts</div>
+          <div style="font-size:14px; color:#6b3a33; margin-top:6px; max-width:560px;">GitHub a répondu <span style="font-family:'IBM Plex Mono',monospace; font-size:13px;">503</span> il y a quelques secondes. Ce n'est pas votre session : elle est toujours valide. Il n'y a rien à corriger de votre côté.</div>
+          <button type="button" style="margin-top:14px; font:inherit; font-size:13.5px; font-weight:500; background:#fff; border:1px solid #e0c7c1; color:#8f1d14; border-radius:5px; padding:8px 14px; cursor:pointer;">Réessayer</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ reposNormal }}" hint-placeholder-val="{{ true }}">
+        <div style="margin-top:18px; border:1px solid #e0ded7; border-radius:8px; overflow:hidden; background:#fbfaf8;">
+          <sc-for list="{{ repoList }}" as="r" hint-placeholder-count="6">
+            <div style="border-bottom:1px solid #eceae3; padding:17px 20px; display:flex; align-items:center; gap:20px;" style-hover="background:#f6f4ef">
+              <div style="min-width:0; flex:1;">
+                <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap;">
+                  <span style="font-family:'IBM Plex Mono',monospace; font-size:14.5px; font-weight:500;">{{ r.name }}</span>
+                  <span style="{{ r.visStyle }}">{{ r.vis }}</span>
+                  <sc-if value="{{ r.org }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size:11.5px; color:#7d7c76; font-family:'IBM Plex Mono',monospace;">org</span>
+                  </sc-if>
+                </div>
+                <div style="font-size:13.5px; color:#5c5b55; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ r.desc }}</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:7px; width:130px; flex:none;">
+                <span style="width:9px; height:9px; border-radius:50%; background:#8b8781; display:inline-block;"></span>
+                <span style="font-size:13px; color:#4b4a45;">{{ r.lang }}</span>
+              </div>
+              <div style="font-size:12.5px; color:#8b8781; width:120px; flex:none;">{{ r.updated }}</div>
+              <button type="button" onClick="{{ r.scan }}" style="font:inherit; font-size:13.5px; font-weight:500; background:#1b1b1e; color:#fbfaf8; border:none; border-radius:5px; padding:8px 15px; cursor:pointer; flex:none;">Scanner</button>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <!-- ============ 3. SCAN EN COURS ============ -->
+  <sc-if value="{{ isScan }}" hint-placeholder-val="{{ true }}">
+    <div style="max-width:720px; margin:0 auto; padding:90px 32px 60px;">
+      <sc-if value="{{ scanRunning }}" hint-placeholder-val="{{ true }}">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#7d7c76;">{{ scanRepoName }}</div>
+          <h1 style="font-family:'IBM Plex Serif',Georgia,serif; font-size:30px; font-weight:600; margin:12px 0 0; letter-spacing:-0.01em;">{{ scanHeadline }}</h1>
+          <div style="height:3px; background:#e4e2da; border-radius:2px; margin:28px 0 0; overflow:hidden; position:relative;">
+            <div style="{{ scanBarStyle }}"></div>
+          </div>
+          <div style="margin-top:28px; border:1px solid #e0ded7; border-radius:8px; background:#fbfaf8; overflow:hidden;">
+            <sc-for list="{{ scanSteps }}" as="s" hint-placeholder-count="2">
+              <div style="padding:16px 20px; border-bottom:1px solid #eceae3; display:flex; gap:14px; align-items:baseline;">
+                <span style="{{ s.markStyle }}">{{ s.mark }}</span>
+                <div>
+                  <div style="{{ s.titleStyle }}">{{ s.title }}</div>
+                  <div style="font-size:13px; color:#6b6a64; margin-top:3px; font-family:'IBM Plex Mono',monospace;">{{ s.detail }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="font-size:13px; color:#8b8781; margin-top:16px;">Généralement 5 à 20 secondes selon la taille du dépôt.</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ scanFailed }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#7d7c76;">{{ scanRepoName }}</div>
+          <h1 style="font-family:'IBM Plex Serif',Georgia,serif; font-size:30px; font-weight:600; margin:12px 0 22px; letter-spacing:-0.01em;">Le scan n'a pas pu démarrer</h1>
+          <div style="border:1px solid #e8c2ba; background:#fcefec; border-radius:8px; padding:22px 24px;">
+            <div style="font-weight:600; font-size:16px; color:#8f1d14;">{{ scanErr.title }}</div>
+            <div style="font-size:14.5px; color:#5d332d; margin-top:8px; line-height:1.55; text-wrap:pretty;">{{ scanErr.body }}</div>
+            <div style="margin-top:16px; padding-top:14px; border-top:1px solid #f0d5cf;">
+              <div style="font-size:12px; font-family:'IBM Plex Mono',monospace; letter-spacing:0.05em; text-transform:uppercase; color:#9a5548;">Ce qu'il faut faire</div>
+              <div style="font-size:14.5px; color:#5d332d; margin-top:6px;">{{ scanErr.action }}</div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:18px;">
+              <button type="button" onClick="{{ goRepos }}" style="font:inherit; font-size:13.5px; font-weight:500; background:#fff; border:1px solid #e0c7c1; color:#8f1d14; border-radius:5px; padding:9px 15px; cursor:pointer;">{{ scanErr.cta }}</button>
+              <button type="button" onClick="{{ goRepos }}" style="font:inherit; font-size:13.5px; background:transparent; border:none; color:#8b5449; cursor:pointer; text-decoration:underline; text-underline-offset:2px;">Choisir un autre dépôt</button>
+            </div>
+          </div>
+          <div style="font-size:13px; color:#8b8781; margin-top:18px;">Aucun quota n'a été consommé : le scan est gratuit et illimité.</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <!-- ============ 4. RAPPORT ============ -->
+  <sc-if value="{{ isReport }}" hint-placeholder-val="{{ true }}">
+    <div style="max-width:1000px; margin:0 auto; padding:34px 32px 70px;">
+
+      <!-- provenance -->
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:30px; flex-wrap:wrap;">
+        <div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <h1 style="font-family:'IBM Plex Mono',monospace; font-size:24px; font-weight:600; margin:0; letter-spacing:-0.01em;">{{ rep.repo }}</h1>
+            <span style="font-size:11.5px; font-family:'IBM Plex Mono',monospace; color:#6b6a64; border:1px solid #ddd9d0; border-radius:3px; padding:2px 6px; background:#fbfaf8; white-space:nowrap; flex:none;">rapport FR</span>
+          </div>
+          <div style="display:flex; column-gap:22px; row-gap:5px; flex-wrap:wrap; margin-top:12px; font-size:13.5px; color:#5c5b55;">
+            <span style="flex:none; white-space:nowrap;">Scanné le <span style="color:#2c2b28;">{{ rep.date }}</span></span>
+            <span style="flex:none; white-space:nowrap;">Commit <span style="font-family:'IBM Plex Mono',monospace; color:#2c2b28;">{{ rep.commit }}</span></span>
+            <span style="flex:none; white-space:nowrap;"><span style="font-family:'IBM Plex Mono',monospace; color:#2c2b28;">{{ rep.files }}</span> fichiers lus sur <span style="font-family:'IBM Plex Mono',monospace; color:#2c2b28;">{{ rep.tracked }}</span> versionnés</span>
+          </div>
+          <div style="font-size:13px; color:#7d7c76; margin-top:6px;">{{ rep.coverageNote }}</div>
+        </div>
+        <div style="display:flex; gap:8px; flex:none;">
+          <button type="button" style="font:inherit; font-size:13.5px; font-weight:500; background:#fbfaf8; border:1px solid #ddd9d0; border-radius:5px; padding:8px 14px; cursor:pointer; white-space:nowrap; flex:none;">Export PDF</button>
+          <button type="button" style="font:inherit; font-size:13.5px; font-weight:500; background:#fbfaf8; border:1px solid #ddd9d0; border-radius:5px; padding:8px 14px; cursor:pointer; white-space:nowrap; flex:none;">JSON</button>
+          <button type="button" onClick="{{ rescan }}" style="font:inherit; font-size:13.5px; font-weight:500; background:#fbfaf8; border:1px solid #ddd9d0; border-radius:5px; padding:8px 14px; cursor:pointer; white-space:nowrap; flex:none;">Rescanner</button>
+        </div>
+      </div>
+
+      <!-- résumé par axe -->
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:#e0ded7; border:1px solid #e0ded7; border-radius:8px; overflow:hidden; margin-top:24px;">
+        <sc-for list="{{ axes }}" as="a" hint-placeholder-count="4">
+          <button type="button" onClick="{{ a.jump }}" style="{{ a.summaryStyle }}">
+            <div style="display:flex; align-items:center; gap:7px;">
+              <span style="{{ a.glyphStyle }}">{{ a.glyph }}</span>
+              <span style="font-size:13px; font-weight:500; color:#3a3934;">{{ a.short }}</span>
+            </div>
+            <div style="{{ a.statusStyle }}">{{ a.statusLabel }}</div>
+          </button>
+        </sc-for>
+      </div>
+
+      <!-- tout vert -->
+      <sc-if value="{{ rep.allClear }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:22px; border:1px solid #cfe0d4; background:#f2f8f3; border-radius:8px; padding:26px 28px; display:flex; gap:18px; align-items:flex-start;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:20px; color:#2f6b46; line-height:1;">✓</span>
+          <div>
+            <div style="font-family:'IBM Plex Serif',Georgia,serif; font-size:21px; font-weight:600; color:#225035;">Rien à signaler sur les quatre axes.</div>
+            <div style="font-size:14.5px; color:#3f5c4a; margin-top:8px; max-width:620px; line-height:1.55; text-wrap:pretty;">Le scan a lu 172 des 177 fichiers versionnés et n'a trouvé ni secret exposé, ni règle <span style="font-family:'IBM Plex Mono',monospace; font-size:13.5px;">.gitignore</span> manquante, ni point de qualité ou de documentation à traiter. Le rapport est complet — il n'y a rien de plus à en attendre.</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- par quoi commencer -->
+      <sc-if value="{{ showPriority }}" hint-placeholder-val="{{ true }}">
+        <div style="margin-top:22px; border:1px solid #e0ded7; border-radius:8px; background:#fbfaf8; overflow:hidden;">
+          <div style="padding:15px 20px 13px; border-bottom:1px solid #eceae3; display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:0.07em; text-transform:uppercase; color:#6b6a64;">Par quoi commencer</span>
+            <span style="font-size:12.5px; color:#8b8781;">Sévérité pondérée par le contexte du fichier, pas la sévérité seule.</span>
+          </div>
+          <sc-for list="{{ priority }}" as="p" hint-placeholder-count="2">
+            <button type="button" onClick="{{ p.jump }}" style="display:flex; width:100%; text-align:left; gap:14px; align-items:baseline; padding:13px 20px; border:none; border-bottom:1px solid #eceae3; background:transparent; font:inherit; cursor:pointer;" style-hover="background:#f5f3ee">
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:#9a9891; width:14px; flex:none;">{{ p.n }}</span>
+              <span style="{{ p.badgeStyle }}">{{ p.sev }}</span>
+              <span style="font-size:14.5px; font-weight:500; color:#26251f;">{{ p.title }}</span>
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#7d7c76;">{{ p.loc }}</span>
+              <span style="margin-left:auto; font-size:12.5px; color:#8b8781;">{{ p.why }}</span>
+            </button>
+          </sc-for>
+          <sc-if value="{{ priorityFootnote }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:12px 20px 14px; font-size:13px; color:#6b6a64; background:#f7f5f0; line-height:1.5;">{{ priorityFootnote }}</div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- axes -->
+      <sc-for list="{{ axes }}" as="a" hint-placeholder-count="4">
+        <div id="{{ a.anchor }}" style="margin-top:34px; scroll-margin-top:80px;">
+          <div style="display:flex; align-items:baseline; gap:12px; padding-bottom:11px; border-bottom:1px solid #d9d6cd;">
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:#9a9891;">{{ a.num }}</span>
+            <h2 style="font-family:'IBM Plex Serif',Georgia,serif; font-size:21px; font-weight:600; margin:0; letter-spacing:-0.01em;">{{ a.title }}</h2>
+            <span style="{{ a.statusPillStyle }}">{{ a.statusLabel }}</span>
+            <span style="margin-left:auto; font-size:12.5px; color:#8b8781; font-family:'IBM Plex Mono',monospace;">{{ a.scope }}</span>
+          </div>
+
+          <sc-if value="{{ a.partialNote }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:12px; border-left:3px solid #c9a227; background:#fdf8e8; border-radius:0 6px 6px 0; padding:13px 16px;">
+              <div style="font-size:13.5px; font-weight:600; color:#6e5406;">Une partie du dépôt n'a pas été lue</div>
+              <div style="font-size:13.5px; color:#6b5a2e; margin-top:4px; line-height:1.5;">{{ a.partialNote }}</div>
+              <div style="font-size:12.5px; color:#8a7a4d; margin-top:6px;">Cette réserve ne concerne que cet axe. Les autres axes ci-dessous ont lu ce qu'il leur fallait.</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ a.notApplicable }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:12px; border:1px dashed #d3d0c7; border-radius:6px; padding:18px 20px; background:#f7f6f2;">
+              <div style="font-size:14.5px; font-weight:500; color:#4b4a45;">La question ne se pose pas sur ce dépôt.</div>
+              <div style="font-size:13.5px; color:#6b6a64; margin-top:5px; max-width:640px;">Aucun fichier Markdown n'est versionné : il n'y a ni lien à vérifier, ni documentation dans laquelle chercher les variables d'environnement. Ce n'est ni un succès ni un manquement.</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ a.clean }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:12px; border:1px solid #dbe7dd; border-radius:6px; padding:16px 20px; background:#f6faf7; display:flex; gap:11px; align-items:baseline;">
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#2f6b46;">✓</span>
+              <span style="font-size:14px; color:#33513e;">{{ a.cleanNote }}</span>
+            </div>
+          </sc-if>
+
+          <!-- métriques qualité -->
+          <sc-if value="{{ a.metrics }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:14px; border:1px solid #e0ded7; border-radius:8px; background:#fbfaf8; overflow:hidden;">
+              <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:#eceae3;">
+                <sc-for list="{{ a.metrics }}" as="m" hint-placeholder-count="5">
+                  <div style="background:#fbfaf8; padding:14px 16px;">
+                    <div style="font-size:12px; color:#7d7c76;">{{ m.label }}</div>
+                    <div style="{{ m.valueStyle }}">{{ m.value }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="padding:10px 16px; border-top:1px solid #eceae3; font-size:12.5px; color:#6b6a64; background:#f7f5f0;">{{ a.metricsCaveat }}</div>
+            </div>
+          </sc-if>
+
+          <!-- détections -->
+          <sc-for list="{{ a.detections }}" as="d" hint-placeholder-count="2">
+            <div style="{{ d.cardStyle }}">
+              <button type="button" onClick="{{ d.toggle }}" style="display:flex; width:100%; gap:14px; align-items:flex-start; padding:14px 18px; background:transparent; border:none; font:inherit; text-align:left; cursor:pointer;">
+                <span style="{{ d.badgeStyle }}">{{ d.sevLabel }}</span>
+                <span style="min-width:0; flex:1;">
+                  <span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <span style="{{ d.titleStyle }}">{{ d.title }}</span>
+                    <sc-if value="{{ d.testFile }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:11.5px; font-family:'IBM Plex Mono',monospace; color:#4b4a45; background:#eceae3; border:1px solid #ddd9d0; border-radius:3px; padding:1px 6px; white-space:nowrap; flex:none;">fichier de test</span>
+                    </sc-if>
+                    <sc-if value="{{ d.prodFile }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:11.5px; font-family:'IBM Plex Mono',monospace; color:#7a3d18; background:#fbeee2; border:1px solid #eed6bd; border-radius:3px; padding:1px 6px; white-space:nowrap; flex:none;">config de production</span>
+                    </sc-if>
+                    <sc-if value="{{ d.downgraded }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:11.5px; font-family:'IBM Plex Mono',monospace; color:#4b4a45; background:#eef2f6; border:1px solid #d5dfe8; border-radius:3px; padding:1px 6px; white-space:nowrap; flex:none;">trié par l'IA</span>
+                    </sc-if>
+                  </span>
+                  <span style="display:block; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#6b6a64; margin-top:4px;">{{ d.loc }}</span>
+                </span>
+                <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#9a9891; flex:none; padding-top:3px;">{{ d.chevron }}</span>
+              </button>
+
+              <sc-if value="{{ d.open }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:0 18px 16px 18px;">
+                  <div style="border:1px solid #e4e2da; border-radius:6px; background:#f9f8f4; overflow:hidden;">
+                    <div style="display:flex; gap:0; padding:10px 0; font-family:'IBM Plex Mono',monospace; font-size:13px; line-height:1.7;">
+                      <span style="width:52px; flex:none; text-align:right; padding-right:14px; color:#a8a69e; border-right:1px solid #e8e6de; user-select:none;">{{ d.line }}</span>
+                      <span style="padding-left:14px; overflow-x:auto; white-space:pre;"><sc-for list="{{ d.code }}" as="t" hint-placeholder-count="4"><span style="{{ t.style }}">{{ t.txt }}</span></sc-for></span>
+                    </div>
+                  </div>
+                  <div style="font-size:14px; color:#3a3934; margin-top:12px; line-height:1.6; max-width:720px; text-wrap:pretty;">{{ d.advice }}</div>
+
+                  <sc-if value="{{ d.verdict }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:14px; border-top:1px solid #e4e2da; padding-top:13px;">
+                      <div style="display:flex; align-items:baseline; gap:9px; flex-wrap:wrap;">
+                        <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#4a6b86;">Verdict de l'IA</span>
+                        <span style="font-size:13.5px; font-weight:600; color:#2c2b28;">{{ d.verdict.title }}</span>
+                        <span style="font-size:12.5px; color:#7d7c76;">{{ d.verdict.origin }}</span>
+                      </div>
+                      <div style="font-size:14px; color:#4b4a45; margin-top:6px; max-width:700px; line-height:1.55;">{{ d.verdict.body }}</div>
+                      <div style="display:flex; gap:14px; margin-top:10px; align-items:center;">
+                        <button type="button" style="font:inherit; font-size:12.5px; background:#fff; border:1px solid #ddd9d0; border-radius:4px; padding:5px 10px; cursor:pointer; color:#4b4a45; white-space:nowrap; flex:none;">Rétablir la sévérité d'origine</button>
+                        <span style="font-size:12.5px; color:#8b8781;">Le tri réordonne, il ne retranche rien.</span>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+
+      <!-- bloc tri IA -->
+      <div style="margin-top:44px; border-top:1px solid #d9d6cd; padding-top:26px;">
+        <div style="border:1px solid #e0ded7; border-radius:8px; background:#fbfaf8; padding:22px 24px;">
+          <sc-if value="{{ ai.idle }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; gap:26px; align-items:flex-start; flex-wrap:wrap;">
+              <div style="flex:1 1 420px; min-width:280px;">
+                <div style="font-size:16px; font-weight:600;">Trier les faux positifs et prioriser</div>
+                <div style="font-size:14px; color:#4b4a45; margin-top:7px; max-width:600px; line-height:1.55; text-wrap:pretty;">L'IA relit les détections ci-dessus, écarte celles qui ne sont pas des risques réels et explique les autres. Elle n'en ajoute aucune.</div>
+              </div>
+              <div style="flex:none; text-align:right;">
+                <button type="button" onClick="{{ ai.run }}" style="font:inherit; font-size:14px; font-weight:500; background:#fbfaf8; border:1px solid #b8b4a8; color:#1b1b1e; border-radius:6px; padding:11px 18px; cursor:pointer;" style-hover="background:#fff; border-color:#8e8a7e">Faire trier par l'IA</button>
+                <div style="font-size:12.5px; color:#6b6a64; margin-top:8px;">{{ ai.quotaLabel }}</div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ ai.running }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; gap:16px; align-items:center;">
+              <div style="width:120px; height:3px; background:#e4e2da; border-radius:2px; overflow:hidden; position:relative; flex:none;">
+                <div style="position:absolute; inset:0; width:34%; background:#4a6b86; border-radius:2px; animation:ccSweep 1.1s ease-in-out infinite;"></div>
+              </div>
+              <div>
+                <div style="font-size:15px; font-weight:500;">Tri en cours — 14 détections envoyées</div>
+                <div style="font-size:13.5px; color:#6b6a64; margin-top:3px;">Le rapport ci-dessus reste valide et lisible pendant le tri. Rien n'est masqué.</div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ ai.failed }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; gap:14px; align-items:flex-start;">
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#8f1d14; padding-top:3px;">✕</span>
+              <div style="flex:1;">
+                <div style="font-size:15.5px; font-weight:600; color:#8f1d14;">Le tri n'a rien produit</div>
+                <div style="font-size:14px; color:#4b4a45; margin-top:6px; max-width:640px; line-height:1.55;">Le service a expiré avant de répondre. <strong style="font-weight:600; color:#26251f;">Votre quota n'a pas été décompté</strong> — il vous reste 2 tris aujourd'hui. Le rapport ci-dessus est intégralement valide : le tri ne conditionne rien.</div>
+                <button type="button" onClick="{{ ai.retry }}" style="margin-top:12px; font:inherit; font-size:13.5px; font-weight:500; background:#fff; border:1px solid #ddd9d0; border-radius:5px; padding:8px 14px; cursor:pointer;">Réessayer le tri</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ ai.exhausted }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; gap:26px; align-items:flex-start; flex-wrap:wrap;">
+              <div style="flex:1 1 420px; min-width:280px;">
+                <div style="font-size:16px; font-weight:600; color:#7d7c76;">Trier les faux positifs et prioriser</div>
+                <div style="font-size:14px; color:#4b4a45; margin-top:7px; max-width:620px; line-height:1.55; text-wrap:pretty;">Vos 3 tris du jour sont utilisés. Le compteur repart à minuit.<br><strong style="font-weight:600; color:#26251f;">Le scan, lui, reste gratuit et illimité</strong> — vous pouvez continuer à scanner autant de dépôts que vous voulez, et tous vos rapports restent consultables.</div>
+              </div>
+              <div style="flex:none; text-align:right;">
+                <button type="button" disabled="{{ true }}" style="font:inherit; font-size:14px; font-weight:500; background:#f0eee7; border:1px solid #e0ded7; color:#a5a39b; border-radius:6px; padding:11px 18px; cursor:not-allowed;">Faire trier par l'IA</button>
+                <div style="font-size:12.5px; color:#8b8781; margin-top:8px;">0 tri restant aujourd'hui</div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ ai.done }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#4a6b86; padding-top:3px;">✓</span>
+              <div style="flex:1 1 400px;">
+                <div style="font-size:15.5px; font-weight:600;">Tri effectué le 4 août à 14:32</div>
+                <div style="font-size:14px; color:#4b4a45; margin-top:6px; max-width:640px; line-height:1.55;">3 détections rétrogradées, 5 confirmées, 6 sans avis. Rien n'a été supprimé : les détections écartées sont repliées, avec leur sévérité d'origine et la justification.</div>
+              </div>
+              <div style="flex:none; text-align:right;">
+                <div style="font-size:12.5px; color:#6b6a64;">Il vous reste 1 tri aujourd'hui</div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ 5. HISTORIQUE ============ -->
+  <sc-if value="{{ isHistory }}" hint-placeholder-val="{{ true }}">
+    <div style="max-width:1000px; margin:0 auto; padding:36px 32px 60px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px;">
+        <div>
+          <h1 style="font-family:'IBM Plex Serif',Georgia,serif; font-size:30px; font-weight:600; margin:0; letter-spacing:-0.01em;">Historique</h1>
+          <p style="font-size:14.5px; color:#5c5b55; margin:8px 0 0;">Chaque rapport reste consultable tel qu'il a été produit, dans sa langue d'origine.</p>
+        </div>
+        <sc-if value="{{ historyHasRows }}" hint-placeholder-val="{{ true }}">
+          <button type="button" onClick="{{ askWipe }}" style="font:inherit; font-size:13.5px; background:transparent; border:1px solid #e0ded7; color:#7a4038; border-radius:5px; padding:8px 14px; cursor:pointer;">Tout supprimer</button>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ historyHasRows }}" hint-placeholder-val="{{ true }}">
+        <div style="margin-top:22px; border:1px solid #e0ded7; border-radius:8px; overflow:hidden; background:#fbfaf8;">
+          <sc-for list="{{ history }}" as="h" hint-placeholder-count="5">
+            <div style="border-bottom:1px solid #eceae3; padding:15px 20px; display:flex; align-items:center; gap:20px;" style-hover="background:#f6f4ef">
+              <button type="button" onClick="{{ h.open }}" style="flex:1; min-width:0; text-align:left; background:transparent; border:none; font:inherit; cursor:pointer; padding:0;">
+                <span style="font-family:'IBM Plex Mono',monospace; font-size:14.5px; font-weight:500;">{{ h.repo }}</span>
+                <span style="display:block; font-size:12.5px; color:#7d7c76; margin-top:3px;">{{ h.date }} · commit {{ h.commit }}</span>
+              </button>
+              <span style="{{ h.statusStyle }}">{{ h.status }}</span>
+              <span style="font-size:12.5px; color:#7d7c76; width:74px; flex:none;">rapport {{ h.lang }}</span>
+              <button type="button" onClick="{{ h.del }}" style="font:inherit; font-size:12.5px; background:transparent; border:none; color:#8b8781; cursor:pointer; flex:none;" style-hover="color:#8f1d14">Supprimer</button>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ historyEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:22px; border:1px dashed #d6d3ca; border-radius:8px; padding:60px 32px; text-align:center; background:#fbfaf8;">
+          <div style="font-family:'IBM Plex Serif',Georgia,serif; font-size:22px; font-weight:600;">Aucun scan pour l'instant</div>
+          <div style="font-size:14.5px; color:#5c5b55; margin-top:9px; max-width:460px; margin-left:auto; margin-right:auto; line-height:1.55;">Choisissez un dépôt et lancez un scan — c'est gratuit et il n'y a pas de limite. Le rapport apparaîtra ici ensuite.</div>
+          <button type="button" onClick="{{ goRepos }}" style="margin-top:18px; font:inherit; font-size:14px; font-weight:500; background:#1b1b1e; color:#fbfaf8; border:none; border-radius:6px; padding:11px 18px; cursor:pointer;">Voir mes dépôts</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ confirmWipe }}" hint-placeholder-val="{{ false }}">
+        <div style="position:fixed; inset:0; background:rgba(30,29,26,0.32); display:flex; align-items:center; justify-content:center; z-index:60; padding:24px;">
+          <div style="background:#fbfaf8; border:1px solid #ddd9d0; border-radius:10px; max-width:460px; padding:26px 28px; box-shadow:0 18px 44px rgba(30,29,26,0.18); animation:ccIn .16s ease both;">
+            <div style="font-family:'IBM Plex Serif',Georgia,serif; font-size:21px; font-weight:600;">Supprimer tout l'historique ?</div>
+            <div style="font-size:14.5px; color:#4b4a45; margin-top:10px; line-height:1.55;">Les 5 rapports et leurs détections seront effacés définitivement. Vos dépôts ne sont pas touchés, et vous pourrez les rescanner gratuitement.</div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:22px;">
+              <button type="button" onClick="{{ cancelWipe }}" style="font:inherit; font-size:14px; background:transparent; border:1px solid #ddd9d0; border-radius:5px; padding:9px 15px; cursor:pointer;">Annuler</button>
+              <button type="button" onClick="{{ doWipe }}" style="font:inherit; font-size:14px; font-weight:500; background:#8f1d14; color:#fff; border:none; border-radius:5px; padding:9px 15px; cursor:pointer;">Supprimer les 5 rapports</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <!-- ============ 6. COMPTE ============ -->
+  <sc-if value="{{ isAccount }}" hint-placeholder-val="{{ true }}">
+    <div style="max-width:760px; margin:0 auto; padding:36px 32px 60px;">
+      <h1 style="font-family:'IBM Plex Serif',Georgia,serif; font-size:30px; font-weight:600; margin:0 0 24px; letter-spacing:-0.01em;">Compte</h1>
+
+      <div style="border:1px solid #e0ded7; border-radius:8px; background:#fbfaf8; padding:22px 24px; display:flex; gap:18px; align-items:center;">
+        <div style="width:52px; height:52px; border-radius:50%; background:#dcd9d0; border:1px solid #cfccc2; flex:none;"></div>
+        <div style="flex:1;">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:600;">marc-lefevre</div>
+          <div style="font-size:13.5px; color:#6b6a64; margin-top:3px;">Connecté via GitHub · inscrit le 12 mars 2026</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:600;">2 / 3</div>
+          <div style="font-size:12.5px; color:#6b6a64;">tris IA restants aujourd'hui</div>
+        </div>
+      </div>
+
+      <div style="border:1px solid #e0ded7; border-radius:8px; background:#fbfaf8; padding:20px 24px; margin-top:14px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+          <div>
+            <div style="font-size:15px; font-weight:600;">Langue de l'interface</div>
+            <div style="font-size:13px; color:#6b6a64; margin-top:4px; max-width:420px;">N'affecte que les menus et les libellés. Les rapports déjà produits gardent leur langue d'origine.</div>
+          </div>
+          <div style="display:flex; border:1px solid #ddd9d0; border-radius:5px; overflow:hidden;">
+            <sc-for list="{{ uiLangs }}" as="l" hint-placeholder-count="2">
+              <button type="button" onClick="{{ l.pick }}" style="{{ l.style }}">{{ l.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="border:1px solid #e0ded7; border-radius:8px; background:#fbfaf8; padding:20px 24px; margin-top:14px; display:flex; align-items:center; justify-content:space-between; gap:20px;">
+        <div>
+          <div style="font-size:15px; font-weight:600;">Se déconnecter</div>
+          <div style="font-size:13px; color:#6b6a64; margin-top:4px;">Votre historique est conservé.</div>
+        </div>
+        <button type="button" onClick="{{ goHome }}" style="font:inherit; font-size:13.5px; font-weight:500; background:#fff; border:1px solid #ddd9d0; border-radius:5px; padding:9px 15px; cursor:pointer;">Déconnexion</button>
+      </div>
+
+      <div style="border:1px solid #e8d5d1; border-radius:8px; background:#fdf6f4; padding:20px 24px; margin-top:14px;">
+        <div style="font-size:15px; font-weight:600; color:#7a2b21;">Supprimer le compte</div>
+        <div style="font-size:13.5px; color:#5d332d; margin-top:6px; max-width:560px; line-height:1.55;">Irréversible. Efface vos rapports, votre historique et votre jeton GitHub chiffré. Aucune copie n'est conservée de notre côté.</div>
+        <button type="button" onClick="{{ askDelete }}" style="margin-top:14px; font:inherit; font-size:13.5px; font-weight:500; background:#fff; border:1px solid #e0c7c1; color:#8f1d14; border-radius:5px; padding:9px 15px; cursor:pointer;">Supprimer définitivement mon compte</button>
+      </div>
+
+      <sc-if value="{{ confirmDelete }}" hint-placeholder-val="{{ false }}">
+        <div style="position:fixed; inset:0; background:rgba(30,29,26,0.32); display:flex; align-items:center; justify-content:center; z-index:60; padding:24px;">
+          <div style="background:#fbfaf8; border:1px solid #ddd9d0; border-radius:10px; max-width:480px; padding:26px 28px; box-shadow:0 18px 44px rgba(30,29,26,0.18); animation:ccIn .16s ease both;">
+            <div style="font-family:'IBM Plex Serif',Georgia,serif; font-size:21px; font-weight:600;">Supprimer le compte marc-lefevre ?</div>
+            <div style="font-size:14.5px; color:#4b4a45; margin-top:10px; line-height:1.55;">Cette action efface 5 rapports, votre historique complet et votre jeton GitHub chiffré. Elle ne peut pas être annulée.</div>
+            <div style="margin-top:16px;">
+              <label style="font-size:13px; color:#6b6a64;">Tapez <span style="font-family:'IBM Plex Mono',monospace; color:#26251f;">marc-lefevre</span> pour confirmer</label>
+              <div style="margin-top:6px; border:1px solid #ddd9d0; border-radius:5px; padding:9px 12px; font-family:'IBM Plex Mono',monospace; font-size:14px; color:#b3b1a9; background:#fff;">marc-lefevre</div>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:22px;">
+              <button type="button" onClick="{{ cancelDelete }}" style="font:inherit; font-size:14px; background:transparent; border:1px solid #ddd9d0; border-radius:5px; padding:9px 15px; cursor:pointer;">Annuler</button>
+              <button type="button" onClick="{{ cancelDelete }}" style="font:inherit; font-size:14px; font-weight:500; background:#8f1d14; color:#fff; border:none; border-radius:5px; padding:9px 15px; cursor:pointer;">Supprimer le compte</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <!-- ============ 7. LÉGAL ============ -->
+  <sc-if value="{{ isLegal }}" hint-placeholder-val="{{ true }}">
+    <div style="max-width:720px; margin:0 auto; padding:44px 32px 80px;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:#7d7c76;">Politique de confidentialité</div>
+      <h1 style="font-family:'IBM Plex Serif',Georgia,serif; font-size:34px; font-weight:600; margin:14px 0 0; letter-spacing:-0.015em;">Ce que nous faisons de votre code</h1>
+      <p style="font-size:16px; color:#4b4a45; margin:16px 0 0; line-height:1.6;">Mise à jour le 12 juillet 2026. Deux traitements distincts, à ne pas confondre.</p>
+
+      <div style="margin-top:30px; display:grid; gap:1px; background:#e0ded7; border:1px solid #e0ded7; border-radius:8px; overflow:hidden;">
+        <div style="background:#fbfaf8; padding:22px 24px;">
+          <div style="display:flex; align-items:baseline; gap:10px;">
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:#2f6b46; border:1px solid #cfe0d4; background:#f2f8f3; border-radius:3px; padding:2px 7px;">aucun envoi</span>
+            <h2 style="font-size:18px; font-weight:600; margin:0;">Le scan</h2>
+          </div>
+          <p style="font-size:15px; color:#4b4a45; margin:10px 0 0; line-height:1.6; text-wrap:pretty;">Vos fichiers sont lus depuis l'API GitHub, analysés en mémoire sur nos serveurs, puis écartés. <strong style="color:#26251f; font-weight:600;">Rien n'est transmis à un service d'intelligence artificielle.</strong> Ce qui est conservé, c'est le rapport : les détections, les chemins, les extraits qu'elles citent.</p>
+        </div>
+        <div style="background:#fbfaf8; padding:22px 24px;">
+          <div style="display:flex; align-items:baseline; gap:10px;">
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:#7a3d18; border:1px solid #eed6bd; background:#fbeee2; border-radius:3px; padding:2px 7px;">envoi à OpenAI</span>
+            <h2 style="font-size:18px; font-weight:600; margin:0;">Le tri, si vous le déclenchez</h2>
+          </div>
+          <p style="font-size:15px; color:#4b4a45; margin:10px 0 0; line-height:1.6; text-wrap:pretty;">Uniquement quand vous cliquez sur le bouton de tri, et uniquement ce qui est nécessaire :</p>
+          <div style="margin-top:12px; border-left:2px solid #e4e2da; padding-left:16px; display:grid; gap:10px;">
+            <div style="font-size:14.5px; color:#4b4a45;"><strong style="color:#26251f; font-weight:600;">Secrets et .gitignore</strong> — la liste des détections déjà produites (titre, chemin, sévérité). Pas votre code.</div>
+            <div style="font-size:14.5px; color:#4b4a45;"><strong style="color:#26251f; font-weight:600;">Qualité et documentation</strong> — des extraits de code, limités aux lignes citées par les détections.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:28px; display:grid; gap:20px;">
+        <div>
+          <h3 style="font-size:16px; font-weight:600; margin:0;">Le jeton GitHub</h3>
+          <p style="font-size:15px; color:#4b4a45; margin:7px 0 0; line-height:1.6;">Chiffré au repos, portée en lecture seule, jamais affiché ni journalisé. Supprimé immédiatement à la suppression du compte.</p>
+        </div>
+        <div>
+          <h3 style="font-size:16px; font-weight:600; margin:0;">Conservation</h3>
+          <p style="font-size:15px; color:#4b4a45; margin:7px 0 0; line-height:1.6;">Les rapports restent jusqu'à ce que vous les supprimiez. Rien n'expire automatiquement, rien n'est revendu, aucun traceur publicitaire.</p>
+        </div>
+      </div>
+      <button type="button" onClick="{{ goHome }}" style="margin-top:34px; font:inherit; font-size:14px; background:transparent; border:1px solid #ddd9d0; border-radius:5px; padding:9px 15px; cursor:pointer;">← Retour</button>
+    </div>
+  </sc-if>
+
+  <!-- ============ 8. 404 ============ -->
+  <sc-if value="{{ isNotFound }}" hint-placeholder-val="{{ true }}">
+    <div style="max-width:560px; margin:0 auto; padding:150px 32px 60px;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#9a9891;">404</div>
+      <h1 style="font-family:'IBM Plex Serif',Georgia,serif; font-size:32px; font-weight:600; margin:12px 0 0; letter-spacing:-0.015em;">Cette page n'existe pas.</h1>
+      <p style="font-size:15.5px; color:#4b4a45; margin:12px 0 0; line-height:1.6;">Le rapport a peut-être été supprimé, ou l'adresse est incomplète.</p>
+      <button type="button" onClick="{{ goHome }}" style="margin-top:22px; font:inherit; font-size:14px; font-weight:500; background:#1b1b1e; color:#fbfaf8; border:none; border-radius:6px; padding:11px 18px; cursor:pointer;">Retour à l'accueil</button>
+    </div>
+  </sc-if>
+
+  <!-- ============ BARRE PROTOTYPE ============ -->
+  <div style="position:fixed; left:0; right:0; bottom:0; z-index:80; background:#1b1b1e; color:#d8d6cf; border-top:1px solid #000;">
+    <div style="max-width:1400px; margin:0 auto; padding:9px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#807d75; flex:none;">Écran</span>
+      <div style="display:flex; gap:3px; flex-wrap:wrap;">
+        <sc-for list="{{ protoScreens }}" as="p" hint-placeholder-count="8">
+          <button type="button" onClick="{{ p.go }}" style="{{ p.style }}">{{ p.label }}</button>
+        </sc-for>
+      </div>
+      <sc-if value="{{ protoStates }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; align-items:center; gap:12px; padding-left:16px; margin-left:auto; border-left:1px solid #33322e; flex-wrap:wrap;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#807d75; flex:none;">État</span>
+          <div style="display:flex; gap:3px; flex-wrap:wrap;">
+            <sc-for list="{{ protoStates }}" as="s" hint-placeholder-count="6">
+              <button type="button" onClick="{{ s.go }}" style="{{ s.style }}">{{ s.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:900}}">
+const SEV = {
+  crit: { label: 'Critique',    fg: '#8f1d14', bg: '#fbe9e7', bd: '#f0c4bd', w: 5 },
+  high: { label: 'Élevée',      fg: '#8a4409', bg: '#fbeee2', bd: '#eed6bd', w: 4 },
+  med:  { label: 'Moyenne',     fg: '#6e5406', bg: '#fbf3d9', bd: '#ebdda6', w: 3 },
+  low:  { label: 'Faible',      fg: '#4b4a45', bg: '#eeece5', bd: '#dedcd4', w: 2 },
+  info: { label: 'Information', fg: '#6b6a64', bg: '#f2f1ec', bd: '#e4e2da', w: 1 },
+};
+
+const KW = /^(const|let|var|def|class|import|from|function|return|if|else|export|async|await)$/;
+
+function tokenize(code) {
+  const out = [];
+  const re = /(['"`])(?:\\.|(?!\1).)*\1|#[^\n]*|\/\/[^\n]*|\b\d+(?:\.\d+)?\b|[A-Za-z_$][\w$]*|\s+|[^\s\w]/g;
+  let m;
+  while ((m = re.exec(code)) !== null) {
+    const t = m[0];
+    let c = '#2b2a26';
+    if (/^['"`]/.test(t)) c = '#0a6b4f';
+    else if (/^(#|\/\/)/.test(t)) c = '#8f8e88';
+    else if (/^\d/.test(t)) c = '#8a4409';
+    else if (KW.test(t)) c = '#7a3ba8';
+    else if (/^[A-Z_][A-Z0-9_]*$/.test(t)) c = '#1f4f7a';
+    out.push({ txt: t, style: 'color:' + c + (KW.test(t) ? ';font-weight:500' : '') });
+  }
+  return out;
+}
+
+const D = (o) => Object.assign({ testFile: false, prodFile: false, verdict: null }, o);
+
+function personalAxes() {
+  return [
+    {
+      key: 'secrets', num: '01', short: 'Secrets', title: 'Détection de secrets',
+      scope: '156 fichiers source lus',
+      detections: [
+        D({ id: 's1', sev: 'crit', title: 'Clé AWS Access Key exposée', file: 'server/tests/unit/test_agents.py', line: '53',
+            code: "KEY = 'AKIAIOSFODNN7REALKEY1'", testFile: true,
+            advice: "Le motif correspond exactement à une clé AWS. Le fichier est un fichier de test : c'est très probablement une fixture. Vérifiez-le, puis remplacez la valeur par un identifiant manifestement factice (AKIAEXAMPLE…) pour que ce scan et les suivants n'aient plus à poser la question." }),
+        D({ id: 's2', sev: 'crit', title: 'Token GitHub exposé', file: 'server/tests/unit/test_agents.py', line: '54',
+            code: "const token = 'ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij'", testFile: true,
+            advice: "Préfixe ghp_ et longueur conformes à un jeton personnel GitHub. Dans un fichier de test, la valeur est vraisemblablement inventée — mais si elle a été copiée depuis un vrai jeton, révoquez-la : un jeton présent dans l'historique Git reste lisible même après suppression du fichier." }),
+        D({ id: 's3', sev: 'crit', title: 'Clé OpenAI exposée', file: 'server/tests/unit/test_scan_runner.py', line: '8',
+            code: "OPENAI_KEY=sk-abcdefghijklmnopqrstuvwxyz0123", testFile: true,
+            advice: "Motif sk- suivi de 32 caractères. Fichier de test. Si la clé est réelle, révoquez-la depuis le tableau de bord OpenAI avant toute autre chose ; la réécriture d'historique ne suffit pas." }),
+      ],
+    },
+    {
+      key: 'gitignore', num: '02', short: '.gitignore', title: 'Vérification du .gitignore',
+      scope: 'arbre Git complet — 177 entrées',
+      detections: [
+        D({ id: 'g1', sev: 'high', title: 'Fichier .env versionné', file: '.env', line: '1', prodFile: true,
+            code: "DATABASE_URL=postgres://prod:hunter2@db.internal:5432/atlas",
+            advice: "Le fichier est suivi par Git et présent dans l'arbre du dernier commit. Retirez-le de l'index (git rm --cached .env), ajoutez la règle au .gitignore, puis considérez les identifiants qu'il contient comme compromis et faites-les tourner." }),
+        D({ id: 'g2', sev: 'med', title: 'node_modules/ ignoré après avoir été versionné', file: '.gitignore', line: '12',
+            code: "node_modules/   # ajouté au commit 8f21ac, 214 fichiers déjà suivis",
+            advice: "La règle existe mais elle est arrivée trop tard : les fichiers déjà suivis continuent de l'être malgré elle. Un git rm -r --cached node_modules suivi d'un commit règle la situation." }),
+        D({ id: 'g3', sev: 'med', title: 'Aucune règle pour __pycache__/', file: '.gitignore', line: '—',
+            code: "# 31 fichiers .pyc actuellement versionnés",
+            advice: "Des artefacts de compilation Python sont suivis. Ils polluent les diffs et créent des conflits inutiles à chaque changement d'interpréteur." }),
+        D({ id: 'g4', sev: 'low', title: 'Journaux non ignorés', file: '.gitignore', line: '—',
+            code: "*.log   # règle absente — 2 fichiers concernés",
+            advice: "Deux fichiers .log sont versionnés. Sans risque immédiat, mais ils grossissent le dépôt à chaque commit." }),
+      ],
+    },
+    {
+      key: 'quality', num: '03', short: 'Qualité', title: 'Qualité du code',
+      scope: '156 fichiers source, 27 de test',
+      metrics: [
+        { label: 'Tests', value: 'Oui', tone: 'ok' },
+        { label: 'Intégration continue', value: 'Non', tone: 'bad' },
+        { label: 'Lockfile', value: 'Absent pour python', tone: 'bad' },
+        { label: 'Complexité', value: 'Max 12 · 2 fonctions > 10', tone: 'warn' },
+        { label: 'Échantillon', value: '156 fichiers · 27 de test', tone: 'plain' },
+      ],
+      metricsCaveat: 'Complexité non mesurée pour : node. La mesure ne couvre que Python pour l\'instant — l\'absence de chiffre n\'est pas un zéro.',
+      detections: [
+        D({ id: 'q1', sev: 'high', title: 'Aucune intégration continue', file: '.github/workflows/', line: '—',
+            code: "# aucun workflow, aucun .gitlab-ci.yml, aucun Jenkinsfile",
+            advice: "Les tests existent mais rien ne les exécute automatiquement. Un workflow minimal qui lance pytest sur chaque push suffit à faire la différence." }),
+        D({ id: 'q2', sev: 'high', title: 'Lockfile absent pour python', file: 'requirements.txt', line: '1',
+            code: "fastapi>=0.100   # borne ouverte, aucune version figée",
+            advice: "Sans fichier de verrouillage, deux installations à deux semaines d'écart ne donnent pas le même arbre de dépendances. pip-compile ou uv lock produisent un requirements.lock reproductible." }),
+        D({ id: 'q3', sev: 'med', title: 'Complexité cyclomatique de 12', file: 'server/scan_runner.py', line: '142',
+            code: "def dispatch(self, payload, ctx, retries=3, strict=False):",
+            advice: "Douze chemins d'exécution dans une seule fonction : le seuil habituel est 10. Deux fonctions du dépôt dépassent ce seuil, celle-ci et normalize_paths." }),
+        D({ id: 'q4', sev: 'low', title: 'Aucun linter configuré', file: 'pyproject.toml', line: '—',
+            code: "# ni ruff, ni flake8, ni black dans [tool]",
+            advice: "Rien n'impose de style ni ne détecte les imports morts. Ruff couvre les trois usages en une seule dépendance." }),
+      ],
+    },
+    {
+      key: 'docs', num: '04', short: 'Documentation', title: 'Documentation',
+      scope: '4 fichiers Markdown lus',
+      detections: [
+        D({ id: 'd1', sev: 'med', title: '3 variables d\'environnement non documentées', file: 'README.md', line: '—',
+            code: "# absentes du README : SENTRY_DSN, REDIS_URL, SCAN_MAX_FILES",
+            advice: "Ces trois variables sont lues par le code mais n'apparaissent nulle part dans la documentation. Une nouvelle personne qui clone le dépôt ne peut pas le démarrer sans les deviner." }),
+        D({ id: 'd2', sev: 'med', title: 'Lien mort dans le README', file: 'README.md', line: '34',
+            code: "[Guide de contribution](./docs/CONTRIBUTING.md)   -> 404",
+            advice: "La cible n'existe pas dans l'arbre du dépôt. Le fichier a probablement été déplacé vers .github/." }),
+        D({ id: 'd3', sev: 'low', title: 'Aucune section d\'installation', file: 'README.md', line: '—',
+            code: "# titres trouvés : Présentation, Architecture, Licence",
+            advice: "Le README décrit le projet mais ne dit pas comment le lancer." }),
+      ],
+    },
+  ];
+}
+
+function reactAxes() {
+  return [
+    {
+      key: 'secrets', num: '01', short: 'Secrets', title: 'Détection de secrets',
+      scope: '496 fichiers lus',
+      partial: '2 309 fichiers au-delà de la limite d\'analyse, non lus.',
+      partialClean: 'Rien trouvé sur la partie analysée. Ce résultat ne vaut que pour ces 496 fichiers.',
+      detections: [],
+    },
+    {
+      key: 'gitignore', num: '02', short: '.gitignore', title: 'Vérification du .gitignore',
+      scope: 'arbre Git complet — 7 199 entrées',
+      detections: [
+        D({ id: 'rg1', sev: 'med', title: 'Artefacts de build versionnés', file: 'packages/react-dom/build/', line: '—',
+            code: "# 38 fichiers sous build/ suivis par Git",
+            advice: "La règle build/ est absente à la racine ; seuls certains sous-paquets l'ont." }),
+        D({ id: 'rg2', sev: 'med', title: '.DS_Store présent dans l\'arbre', file: 'fixtures/.DS_Store', line: '—',
+            code: "# 3 occurrences",
+            advice: "Métadonnées macOS versionnées par inadvertance." }),
+        D({ id: 'rg3', sev: 'low', title: 'Règle en double', file: '.gitignore', line: '22',
+            code: "coverage/   # déjà déclaré ligne 9",
+            advice: "Sans effet, mais signe d'un fichier édité par plusieurs mains." }),
+        D({ id: 'rg4', sev: 'low', title: 'Journaux npm non ignorés', file: '.gitignore', line: '—',
+            code: "npm-debug.log*   # règle absente",
+            advice: "Aucun fichier concerné aujourd'hui, mais la règle manque." }),
+      ],
+    },
+    {
+      key: 'quality', num: '03', short: 'Qualité', title: 'Qualité du code',
+      scope: '496 fichiers lus sur 7 199',
+      metrics: [
+        { label: 'Tests', value: 'Oui', tone: 'ok' },
+        { label: 'Intégration continue', value: 'Oui', tone: 'ok' },
+        { label: 'Lockfile', value: 'Présent (yarn)', tone: 'ok' },
+        { label: 'Complexité', value: 'Non mesurée', tone: 'plain' },
+        { label: 'Échantillon', value: '496 fichiers · 181 de test', tone: 'plain' },
+      ],
+      metricsCaveat: 'Complexité non mesurée pour : node. Le dépôt ne contient pas de code Python — il n\'y a rien à mesurer, ce n\'est pas une lacune du dépôt.',
+      detections: [
+        D({ id: 'rq1', sev: 'med', title: 'Fichiers de plus de 2 000 lignes', file: 'packages/react-reconciler/src/ReactFiberWorkLoop.js', line: '1',
+            code: "// 3 412 lignes — 8 fichiers au-dessus du seuil",
+            advice: "Signalé à titre indicatif : sur un dépôt de cette nature, la taille des fichiers reflète souvent un choix assumé." }),
+        D({ id: 'rq2', sev: 'low', title: 'Dépendances de développement non figées', file: 'package.json', line: '48',
+            code: '"jest": "^29.0.0"',
+            advice: "Le lockfile compense. Mention informative." }),
+      ],
+    },
+    {
+      key: 'docs', num: '04', short: 'Documentation', title: 'Documentation',
+      scope: '46 fichiers Markdown lus',
+      detections: [
+        D({ id: 'rd1', sev: 'med', title: '2 liens morts dans la documentation', file: 'CONTRIBUTING.md', line: '61',
+            code: "[Code of Conduct](./CODE_OF_CONDUCT.md)   -> 404",
+            advice: "Cibles absentes de l'arbre du dépôt." }),
+        D({ id: 'rd2', sev: 'low', title: 'Variable d\'environnement non documentée', file: 'README.md', line: '—',
+            code: "# absente : RELEASE_CHANNEL",
+            advice: "Lue par les scripts de build, jamais expliquée." }),
+        D({ id: 'rd3', sev: 'low', title: 'Badge pointant vers un service retiré', file: 'README.md', line: '3',
+            code: "![CircleCI](https://circleci.com/gh/...)   -> 404",
+            advice: "Le badge affiche une image cassée sur la page d'accueil du dépôt." }),
+      ],
+    },
+  ];
+}
+
+const REPOS = [
+  { name: 'marc-lefevre/atlas-agents', desc: 'Orchestrateur d\'agents pour l\'analyse de dépôts', lang: 'Python', vis: 'privé', updated: 'il y a 2 jours' },
+  { name: 'marc-lefevre/atlas-web', desc: 'Interface React du projet Atlas', lang: 'TypeScript', vis: 'privé', updated: 'il y a 5 jours' },
+  { name: 'facebook/react', desc: 'The library for web and native user interfaces', lang: 'JavaScript', vis: 'public', updated: 'il y a 3 heures', org: true },
+  { name: 'marc-lefevre/dotfiles', desc: 'Configuration shell, nvim, tmux', lang: 'Shell', vis: 'public', updated: 'il y a 1 mois' },
+  { name: 'lefevre-labs/pipeline-etl', desc: 'Chaîne d\'ingestion quotidienne', lang: 'Python', vis: 'privé', updated: 'il y a 3 semaines', org: true },
+  { name: 'marc-lefevre/notes-cli', desc: '', lang: 'Rust', vis: 'public', updated: 'il y a 4 mois' },
+];
+
+const SCAN_ERRORS = {
+  notfound: { title: 'Dépôt introuvable', body: 'Le dépôt marc-lefevre/atlas-legacy n\'existe plus, ou il a été renommé depuis que vous l\'avez ouvert. GitHub répond 404 pour ce chemin exact.', action: 'Retournez à la liste : elle est rafraîchie à chaque visite et ne montre que les dépôts qui existent encore.', cta: 'Revenir à la liste' },
+  empty: { title: 'Dépôt vide', body: 'Le dépôt existe et vous y avez accès, mais il ne contient aucun commit. Il n\'y a littéralement rien à lire.', action: 'Poussez un premier commit, puis relancez le scan. Rien d\'autre à corriger.', cta: 'Revenir à la liste' },
+  perms: { title: 'Droits insuffisants sur ce dépôt', body: 'Ce dépôt appartient à l\'organisation lefevre-labs, qui n\'a pas approuvé l\'accès de CommitClarify. Votre jeton est valide, mais il ne porte pas ce périmètre.', action: 'Un propriétaire de l\'organisation doit autoriser l\'application dans les réglages GitHub. Vos autres dépôts restent scannables entre-temps.', cta: 'Ouvrir les réglages GitHub' },
+  rate: { title: 'Quota d\'API GitHub épuisé', body: 'GitHub limite le nombre de requêtes par heure et par compte. Le vôtre est atteint ; la fenêtre se réinitialise dans 34 minutes.', action: 'Attendez la réinitialisation puis relancez. Aucun quota CommitClarify n\'a été consommé : le scan est gratuit et illimité de notre côté.', cta: 'Revenir à la liste' },
+  scope: { title: 'Dépôt hors du périmètre du jeton', body: 'Vous avez restreint CommitClarify à une sélection de dépôts lors de l\'installation, et celui-ci n\'en fait pas partie.', action: 'Ajoutez ce dépôt à la sélection depuis les réglages de l\'application GitHub, ou choisissez-en un autre.', cta: 'Modifier la sélection' },
+};
+
+const HISTORY = [
+  { repo: 'marc-lefevre/atlas-agents', date: '4 août 2026, 14:28', commit: '3d4549c', status: 'Trié par l\'IA', lang: 'FR', tone: 'ai' },
+  { repo: 'facebook/react', date: '3 août 2026, 09:11', commit: '7dfc7cc', status: 'Scanné', lang: 'FR', tone: 'ok' },
+  { repo: 'marc-lefevre/atlas-web', date: '1 août 2026, 17:45', commit: 'a91b02e', status: 'Scanné', lang: 'EN', tone: 'ok' },
+  { repo: 'lefevre-labs/pipeline-etl', date: '28 juillet 2026, 11:02', commit: '—', status: 'Échoué', lang: 'FR', tone: 'bad' },
+  { repo: 'marc-lefevre/dotfiles', date: '22 juillet 2026, 08:36', commit: 'c40f19d', status: 'Scanné', lang: 'FR', tone: 'ok' },
+];
+
+class Component extends DCLogic {
+  state = {
+    screen: 'report',
+    reportState: 'default',
+    reposState: 'normal',
+    scanState: 'fetch',
+    scanErr: 'perms',
+    historyState: 'normal',
+    expanded: {},
+    reportLang: 'fr',
+    uiLang: 'fr',
+    repoFilter: 'Tous',
+    confirmWipe: false,
+    confirmDelete: false,
+    homeError: false,
+  };
+
+  set(patch) { this.setState(patch); }
+  go(screen) { return () => this.setState({ screen, expanded: {} }); }
+
+  btn(active, tone) {
+    const base = 'font:inherit; font-size:13px; border-radius:5px; padding:7px 13px; cursor:pointer; white-space:nowrap; ';
+    if (tone === 'proto') {
+      return 'font-family:\'IBM Plex Mono\',monospace; font-size:11.5px; border-radius:4px; padding:5px 9px; cursor:pointer; white-space:nowrap; border:1px solid ' +
+        (active ? '#57544c' : 'transparent') + '; background:' + (active ? '#2e2c28' : 'transparent') + '; color:' + (active ? '#f2f1ed' : '#8d8a82') + ';';
+    }
+    if (tone === 'nav') {
+      return 'font:inherit; font-size:13.5px; font-weight:500; border:none; background:' + (active ? '#eceae3' : 'transparent') +
+        '; color:' + (active ? '#1b1b1e' : '#6b6a64') + '; border-radius:5px; padding:7px 12px; cursor:pointer;';
+    }
+    if (tone === 'seg') {
+      return 'font:inherit; font-size:12.5px; font-weight:500; border:none; padding:6px 11px; cursor:pointer; background:' +
+        (active ? '#1b1b1e' : '#fbfaf8') + '; color:' + (active ? '#fbfaf8' : '#5c5b55') + ';';
+    }
+    return base + 'border:1px solid ' + (active ? '#1b1b1e' : '#ddd9d0') + '; background:' + (active ? '#1b1b1e' : '#fbfaf8') +
+      '; color:' + (active ? '#fbfaf8' : '#4b4a45') + ';';
+  }
+
+  toggle(id, def) {
+    return () => this.setState((s) => {
+      const e = Object.assign({}, s.expanded);
+      e[id] = !(id in e ? e[id] : def);
+      return { expanded: e };
+    });
+  }
+
+  buildAxes() {
+    const rs = this.state.reportState;
+    const isReact = rs === 'partial';
+    let axes = isReact ? reactAxes() : personalAxes();
+
+    if (rs === 'clean') axes = axes.map((a) => Object.assign({}, a, { detections: [], metrics: a.metrics, partial: null }));
+    if (rs === 'na') axes = axes.map((a) => (a.key === 'docs' ? Object.assign({}, a, { detections: [], notApplicable: true }) : a));
+
+    const sorted = rs === 'sorted';
+    if (sorted) {
+      axes = axes.map((a) => {
+        if (a.key !== 'secrets') return a;
+        const dets = a.detections.map((d, i) => {
+          if (i === 0) return Object.assign({}, d, { sev: 'info', origSev: 'crit', verdict: {
+            title: 'Jugé sans risque', origin: '(initialement Critique)',
+            body: "Clé d'exemple documentée par AWS (AKIAIOSFODNN7EXAMPLE et ses variantes), utilisée comme fixture dans un test unitaire. Aucune valeur réelle, aucun compte associé." } });
+          if (i === 2) return Object.assign({}, d, { sev: 'info', origSev: 'crit', verdict: {
+            title: 'Jugé sans risque', origin: '(initialement Critique)',
+            body: "Chaîne alphabétique séquentielle après le préfixe sk- : une vraie clé OpenAI n'a pas cette forme. Fixture de test." } });
+          return Object.assign({}, d, { verdict: {
+            title: 'Confirmé', origin: '(reste Critique)',
+            body: "Le corps du jeton n'a pas de motif reconnaissable de valeur factice. Même dans un fichier de test, il peut s'agir d'un jeton réel copié. À révoquer par précaution." } });
+        });
+        const order = { crit: 0, high: 1, med: 2, low: 3, info: 4 };
+        dets.sort((x, y) => order[x.sev] - order[y.sev]);
+        return Object.assign({}, a, { detections: dets });
+      });
+    }
+    return axes;
+  }
+
+  renderVals() {
+    const s = this.state;
+    const screen = s.screen;
+    const rs = s.reportState;
+    const axesRaw = this.buildAxes();
+
+    const statusFor = (a) => {
+      if (a.notApplicable) return { label: 'Non applicable', fg: '#6b6a64', bg: '#f2f1ec', bd: '#ddd9d0' };
+      if (a.partial) return { label: 'Partiel', fg: '#6e5406', bg: '#fbf3d9', bd: '#ebdda6' };
+      if (!a.detections.length) return { label: 'Rien à signaler', fg: '#2f6b46', bg: '#f2f8f3', bd: '#cfe0d4' };
+      const n = a.detections.length;
+      const worst = a.detections.reduce((m, d) => (SEV[d.sev].w > SEV[m].w ? d.sev : m), 'info');
+      return { label: n + (n > 1 ? ' points' : ' point'), fg: SEV[worst].fg, bg: SEV[worst].bg, bd: SEV[worst].bd };
+    };
+
+    const axes = axesRaw.map((a) => {
+      const st = statusFor(a);
+      const anchor = 'axe-' + a.key;
+      return {
+        anchor, num: a.num, title: a.title, short: a.short, scope: a.scope,
+        glyph: a.notApplicable ? '—' : (a.partial ? '◐' : (a.detections.length ? '●' : '✓')),
+        glyphStyle: 'font-family:\'IBM Plex Mono\',monospace; font-size:12px; color:' + st.fg + ';',
+        statusLabel: st.label,
+        summaryStyle: 'background:#fbfaf8; border:none; padding:14px 16px; text-align:left; cursor:pointer; font:inherit; display:flex; flex-direction:column; gap:8px;',
+        statusStyle: 'font-size:13.5px; font-weight:600; color:' + st.fg + ';',
+        statusPillStyle: 'font-size:11.5px; font-family:\'IBM Plex Mono\',monospace; color:' + st.fg + '; background:' + st.bg + '; border:1px solid ' + st.bd + '; border-radius:3px; padding:2px 8px; white-space:nowrap; flex:none;',
+        jump: () => { const el = document.getElementById(anchor); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 76, behavior: 'smooth' }); },
+        partialNote: a.partial || null,
+        notApplicable: !!a.notApplicable,
+        clean: !a.detections.length && !a.notApplicable,
+        cleanNote: a.partialClean || (a.key === 'secrets' ? 'Aucun secret détecté dans les fichiers lus.' : a.key === 'gitignore' ? 'Toutes les règles attendues sont présentes, et aucun fichier sensible n\'a été versionné avant elles.' : a.key === 'quality' ? 'Linter, tests, CI et lockfiles sont en place ; aucune fonction au-dessus du seuil de complexité.' : 'Aucun lien mort, et toutes les variables d\'environnement lues par le code sont documentées.'),
+        metrics: a.metrics ? a.metrics.map((m) => ({
+          label: m.label, value: m.value,
+          valueStyle: 'font-size:14px; font-weight:600; margin-top:5px; color:' + (m.tone === 'ok' ? '#2f6b46' : m.tone === 'bad' ? '#8f1d14' : m.tone === 'warn' ? '#6e5406' : '#4b4a45') + ';',
+        })) : null,
+        metricsCaveat: a.metricsCaveat,
+        detections: a.detections.map((d) => {
+          const sev = SEV[d.sev];
+          const def = d.sev === 'crit' || d.sev === 'high';
+          const open = (d.id in s.expanded) ? s.expanded[d.id] : (d.verdict && d.sev === 'info' ? false : def);
+          return {
+            id: d.id, sevLabel: sev.label, title: d.title,
+            loc: d.file + (d.line && d.line !== '—' ? ':' + d.line : ''),
+            line: d.line, code: tokenize(d.code), advice: d.advice,
+            testFile: d.testFile, prodFile: d.prodFile, downgraded: !!d.origSev,
+            verdict: d.verdict || null, open, chevron: open ? '▲' : '▼',
+            toggle: this.toggle(d.id, open),
+            badgeStyle: 'flex:none; font-family:\'IBM Plex Mono\',monospace; font-size:11px; font-weight:600; letter-spacing:0.03em; text-transform:uppercase; color:' + sev.fg + '; background:' + sev.bg + '; border:1px solid ' + sev.bd + '; border-radius:3px; padding:3px 8px; margin-top:1px; min-width:88px; text-align:center; white-space:nowrap;',
+            titleStyle: 'font-size:15px; font-weight:' + (d.sev === 'info' ? '500' : '600') + '; color:' + (d.sev === 'info' ? '#57564f' : '#1b1b1e') + ';',
+            cardStyle: 'margin-top:10px; border:1px solid ' + (open ? '#ddd9d0' : '#e6e4dd') + '; border-left:3px solid ' + sev.fg + '; border-radius:6px; background:#fbfaf8; overflow:hidden;',
+          };
+        }),
+      };
+    });
+
+    // priorité
+    let priority = [];
+    let priorityFootnote = null;
+    if (rs === 'default' || rs === 'na' || rs === 'sorting' || rs === 'aifail' || rs === 'quota') {
+      priority = [
+        { n: '1', sev: 'Élevée', sevKey: 'high', title: 'Fichier .env versionné', loc: '.env:1', why: 'Configuration de production, identifiants réels', axis: 'axe-gitignore' },
+        { n: '2', sev: 'Élevée', sevKey: 'high', title: 'Lockfile absent pour python', loc: 'requirements.txt', why: 'Builds non reproductibles', axis: 'axe-quality' },
+        { n: '3', sev: 'Critique', sevKey: 'crit', title: '3 clés dans des fichiers de test', loc: 'server/tests/unit/', why: 'À vérifier, mais probablement des fixtures', axis: 'axe-secrets' },
+      ];
+      priorityFootnote = 'Les trois détections critiques sont toutes dans des fichiers de test. Elles restent à vérifier — le scan ne fait que reconnaître des motifs — mais elles passent après le .env, qui est une vraie configuration de production.';
+    } else if (rs === 'partial') {
+      priority = [
+        { n: '1', sev: 'Moyenne', sevKey: 'med', title: 'Artefacts de build versionnés', loc: 'packages/react-dom/build/', why: 'Arbre Git lu en entier, résultat fiable', axis: 'axe-gitignore' },
+        { n: '2', sev: 'Moyenne', sevKey: 'med', title: '2 liens morts dans la documentation', loc: 'CONTRIBUTING.md:61', why: '46 fichiers Markdown lus, couverture complète', axis: 'axe-docs' },
+      ];
+      priorityFootnote = 'L\'axe secrets n\'a lu que 496 fichiers sur 7 199 : son silence ne vaut pas pour le reste du dépôt. Les axes ci-dessus, eux, ont lu tout ce dont ils avaient besoin.';
+    } else if (rs === 'sorted') {
+      priority = [
+        { n: '1', sev: 'Critique', sevKey: 'crit', title: 'Token GitHub exposé', loc: 'server/tests/unit/test_agents.py:54', why: 'Confirmé par le tri', axis: 'axe-secrets' },
+        { n: '2', sev: 'Élevée', sevKey: 'high', title: 'Fichier .env versionné', loc: '.env:1', why: 'Configuration de production', axis: 'axe-gitignore' },
+      ];
+      priorityFootnote = 'Deux des trois détections critiques ont été rétrogradées en information. Elles restent consultables dans l\'axe secrets, avec leur sévérité d\'origine.';
+    }
+    priority = priority.map((p) => ({
+      n: p.n, sev: p.sev, title: p.title, loc: p.loc, why: p.why,
+      badgeStyle: 'flex:none; font-family:\'IBM Plex Mono\',monospace; font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.03em; color:' + SEV[p.sevKey].fg + '; background:' + SEV[p.sevKey].bg + '; border:1px solid ' + SEV[p.sevKey].bd + '; border-radius:3px; padding:2px 7px;',
+      jump: () => { const el = document.getElementById(p.axis); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 76, behavior: 'smooth' }); },
+    }));
+
+    const isReactRepo = rs === 'partial';
+    const rep = {
+      repo: isReactRepo ? 'facebook/react' : 'marc-lefevre/atlas-agents',
+      date: isReactRepo ? '3 août 2026, 09:11' : '4 août 2026, 14:28',
+      commit: isReactRepo ? '7dfc7cc' : '3d4549c',
+      files: isReactRepo ? '496' : '172',
+      tracked: isReactRepo ? '7 199' : '177',
+      coverageNote: isReactRepo
+        ? 'La couverture varie selon les axes — chaque axe indique la sienne.'
+        : 'Couverture complète : les 5 fichiers non lus sont des exclusions volontaires (binaires, fichiers au-delà de 1 Mo).',
+      allClear: rs === 'clean',
+    };
+
+    const ai = {
+      idle: rs === 'default' || rs === 'partial' || rs === 'clean' || rs === 'na',
+      running: rs === 'sorting',
+      failed: rs === 'aifail',
+      exhausted: rs === 'quota',
+      done: rs === 'sorted',
+      quotaLabel: 'Il vous reste 2 tris aujourd\'hui',
+      run: () => this.setState({ reportState: 'sorting' }),
+      retry: () => this.setState({ reportState: 'sorting' }),
+    };
+
+    const navDef = [
+      { id: 'repos', label: 'Dépôts' }, { id: 'report', label: 'Rapport' },
+      { id: 'history', label: 'Historique' }, { id: 'account', label: 'Compte' },
+    ];
+
+    const screenDefs = [
+      { id: 'home', label: 'accueil' }, { id: 'repos', label: 'dépôts' }, { id: 'scan', label: 'scan' },
+      { id: 'report', label: 'rapport' }, { id: 'history', label: 'historique' },
+      { id: 'account', label: 'compte' }, { id: 'legal', label: 'légal' }, { id: 'notfound', label: '404' },
+    ];
+
+    let protoStates = null;
+    if (screen === 'report') {
+      protoStates = [
+        { id: 'default', label: 'avec détections' }, { id: 'clean', label: 'tout vert' },
+        { id: 'partial', label: 'partiel (react)' }, { id: 'na', label: 'axe non applicable' },
+        { id: 'sorted', label: 'trié par IA' }, { id: 'sorting', label: 'tri en cours' },
+        { id: 'aifail', label: 'tri échoué' }, { id: 'quota', label: 'quota épuisé' },
+      ].map((x) => ({ label: x.label, style: this.btn(rs === x.id, 'proto'), go: () => this.setState({ reportState: x.id, expanded: {} }) }));
+    } else if (screen === 'repos') {
+      protoStates = [
+        { id: 'normal', label: 'liste' }, { id: 'loading', label: 'chargement' }, { id: 'empty', label: 'aucun dépôt' },
+        { id: 'nomatch', label: 'aucun résultat' }, { id: 'error', label: 'échec github' },
+      ].map((x) => ({ label: x.label, style: this.btn(s.reposState === x.id, 'proto'), go: () => this.setState({ reposState: x.id }) }));
+    } else if (screen === 'scan') {
+      protoStates = [{ id: 'fetch', label: 'récupération' }, { id: 'analyze', label: 'analyse' }]
+        .map((x) => ({ label: x.label, style: this.btn(s.scanState === x.id, 'proto'), go: () => this.setState({ scanState: x.id }) }))
+        .concat(Object.keys(SCAN_ERRORS).map((k) => ({
+          label: '✕ ' + ({ notfound: 'introuvable', empty: 'vide', perms: 'droits', rate: 'quota api', scope: 'périmètre' })[k],
+          style: this.btn(s.scanState === 'err' && s.scanErr === k, 'proto'),
+          go: () => this.setState({ scanState: 'err', scanErr: k }),
+        })));
+    } else if (screen === 'history') {
+      protoStates = [{ id: 'normal', label: 'liste' }, { id: 'empty', label: 'aucun scan' }]
+        .map((x) => ({ label: x.label, style: this.btn(s.historyState === x.id, 'proto'), go: () => this.setState({ historyState: x.id, confirmWipe: false }) }));
+    } else if (screen === 'home') {
+      protoStates = [{ id: false, label: 'normal' }, { id: true, label: 'échec connexion' }]
+        .map((x) => ({ label: x.label, style: this.btn(s.homeError === x.id, 'proto'), go: () => this.setState({ homeError: x.id }) }));
+    }
+
+    return {
+      showChrome: ['repos', 'scan', 'report', 'history', 'account'].indexOf(screen) >= 0,
+      isHome: screen === 'home', isRepos: screen === 'repos', isScan: screen === 'scan',
+      isReport: screen === 'report', isHistory: screen === 'history', isAccount: screen === 'account',
+      isLegal: screen === 'legal', isNotFound: screen === 'notfound',
+
+      navItems: navDef.map((n) => ({ label: n.label, style: this.btn(screen === n.id || (n.id === 'repos' && screen === 'scan'), 'nav'), go: this.go(n.id) })),
+      goHome: this.go('home'), goRepos: this.go('repos'), goLegal: this.go('legal'),
+      homeError: s.homeError, clearHomeError: () => this.setState({ homeError: false }),
+      homeClaims: ['Gratuit et illimité', 'Aucun appel à un modèle de langage', 'Résultat reproductible pour un même commit'],
+      axisPitch: [
+        { n: 1, title: 'Secrets', body: 'Clés d\'API, jetons, fichiers sensibles versionnés — avec le chemin et la ligne exacts, et le contexte du fichier.' },
+        { n: 2, title: '.gitignore', body: 'Règles absentes et fichiers protégés trop tard, lus depuis la sémantique Git réelle et non depuis le disque.' },
+        { n: 3, title: 'Qualité', body: 'Linters, tests, intégration continue, lockfiles et complexité cyclomatique, avec la taille de l\'échantillon analysé.' },
+        { n: 4, title: 'Documentation', body: 'Liens morts dans le Markdown et variables d\'environnement lues par le code mais jamais expliquées.' },
+      ],
+
+      // dépôts
+      reposLoading: s.reposState === 'loading', reposEmpty: s.reposState === 'empty',
+      reposNoMatch: s.reposState === 'nomatch', reposError: s.reposState === 'error',
+      reposNormal: s.reposState === 'normal',
+      skeletonRows: [1, 2, 3, 4, 5],
+      repoQuery: s.reposState === 'nomatch' ? 'payments' : '',
+      repoQueryPlaceholder: s.reposState === 'nomatch' ? '' : 'Rechercher parmi 34 dépôts',
+      repoFilters: ['Tous', 'Publics', 'Privés', 'Organisations'].map((f) => ({
+        label: f, style: this.btn(s.repoFilter === f, ''), pick: () => this.setState({ repoFilter: f }),
+      })),
+      reportLangs: [{ id: 'fr', label: 'Français' }, { id: 'en', label: 'English' }].map((l) => ({
+        label: l.label, style: this.btn(s.reportLang === l.id, 'seg'), pick: () => this.setState({ reportLang: l.id }),
+      })),
+      uiLangs: [{ id: 'fr', label: 'Français' }, { id: 'en', label: 'English' }].map((l) => ({
+        label: l.label, style: this.btn(s.uiLang === l.id, 'seg'), pick: () => this.setState({ uiLang: l.id }),
+      })),
+      resetFilters: () => this.setState({ reposState: 'normal', repoFilter: 'Tous' }),
+      repoList: REPOS.map((r) => ({
+        name: r.name, desc: r.desc || 'Pas de description', lang: r.lang, vis: r.vis, org: !!r.org, updated: r.updated,
+        visStyle: 'font-size:11.5px; font-family:\'IBM Plex Mono\',monospace; border-radius:3px; padding:1px 6px; border:1px solid ' +
+          (r.vis === 'privé' ? '#ddd9d0; background:#f2f1ec; color:#5c5b55' : '#d5dfe8; background:#eef2f6; color:#3d5c78') + ';',
+        scan: () => this.setState({ screen: 'scan', scanState: 'fetch' }),
+      })),
+
+      // scan
+      scanRunning: s.scanState !== 'err', scanFailed: s.scanState === 'err',
+      scanRepoName: s.scanState === 'err' ? 'lefevre-labs/pipeline-etl' : 'marc-lefevre/atlas-agents',
+      scanHeadline: s.scanState === 'fetch' ? 'Récupération des fichiers depuis GitHub' : 'Analyse en cours',
+      scanBarStyle: 'height:100%; background:#1b1b1e; border-radius:2px; transition:width .4s ease; width:' + (s.scanState === 'fetch' ? '38%' : '81%') + ';',
+      scanSteps: [
+        { title: 'Récupération des fichiers', detail: s.scanState === 'fetch' ? '172 fichiers récupérés sur 177 versionnés' : '172 fichiers récupérés · 5 exclus (binaires, > 1 Mo)',
+          mark: s.scanState === 'fetch' ? '◐' : '✓', done: s.scanState !== 'fetch' },
+        { title: 'Analyse des quatre axes', detail: s.scanState === 'fetch' ? 'en attente' : 'secrets ✓ · .gitignore ✓ · qualité ◐ · documentation —',
+          mark: s.scanState === 'fetch' ? '·' : '◐', done: false, pending: s.scanState === 'fetch' },
+      ].map((x) => ({
+        title: x.title, detail: x.detail, mark: x.mark,
+        markStyle: 'font-family:\'IBM Plex Mono\',monospace; font-size:13px; width:14px; flex:none; color:' + (x.done ? '#2f6b46' : x.pending ? '#b3b1a9' : '#1b1b1e') + ';',
+        titleStyle: 'font-size:14.5px; font-weight:500; color:' + (x.pending ? '#8b8781' : '#1b1b1e') + ';',
+      })),
+      scanErr: SCAN_ERRORS[s.scanErr],
+
+      // rapport
+      rep, axes, priority, priorityFootnote,
+      showPriority: priority.length > 0,
+      ai,
+      rescan: () => this.setState({ screen: 'scan', scanState: 'fetch' }),
+
+      // historique
+      historyHasRows: s.historyState === 'normal', historyEmpty: s.historyState === 'empty',
+      history: HISTORY.map((h) => ({
+        repo: h.repo, date: h.date, commit: h.commit, status: h.status, lang: h.lang,
+        statusStyle: 'font-size:12px; font-family:\'IBM Plex Mono\',monospace; border-radius:3px; padding:2px 8px; width:auto; flex:none; border:1px solid ' +
+          (h.tone === 'bad' ? '#f0c4bd; background:#fbe9e7; color:#8f1d14' : h.tone === 'ai' ? '#d5dfe8; background:#eef2f6; color:#3d5c78' : '#cfe0d4; background:#f2f8f3; color:#2f6b46') + ';',
+        open: () => this.setState({ screen: 'report', reportState: h.repo === 'facebook/react' ? 'partial' : (h.tone === 'ai' ? 'sorted' : 'default'), expanded: {} }),
+        del: () => {},
+      })),
+      confirmWipe: s.confirmWipe,
+      askWipe: () => this.setState({ confirmWipe: true }),
+      cancelWipe: () => this.setState({ confirmWipe: false }),
+      doWipe: () => this.setState({ confirmWipe: false, historyState: 'empty' }),
+
+      // compte
+      confirmDelete: s.confirmDelete,
+      askDelete: () => this.setState({ confirmDelete: true }),
+      cancelDelete: () => this.setState({ confirmDelete: false }),
+
+      // barre prototype
+      protoScreens: screenDefs.map((x) => ({ label: x.label, style: this.btn(screen === x.id, 'proto'), go: this.go(x.id) })),
+      protoStates,
+    };
+  }
+}
+
+</script>
+</body>
+</html>
