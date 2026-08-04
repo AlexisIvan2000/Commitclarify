@@ -384,6 +384,10 @@ TEXTS: dict[str, dict[str, str]] = {
         "fr": "{count} chunks indexes",
         "en": "{count} chunks indexed",
     },
+    "progress.scanning": {
+        "fr": "Scan automatique en cours...",
+        "en": "Running the automated scan...",
+    },
     "progress.analyzing": {
         "fr": "Analyse IA en cours...",
         "en": "Running AI analysis...",

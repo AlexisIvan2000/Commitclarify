@@ -27,6 +27,13 @@ async def run_scan(
 ) -> dict:
     language = normalize(language)
 
+    if tracked_paths is None:
+        logger.warning(
+            "Scan lance sans tracked_paths : les regles d'absence (lockfile, CI, tests, "
+            "liens, .env.example) sont evaluees sur l'echantillon et peuvent produire des "
+            "faux positifs",
+        )
+
     quality_task = asyncio.create_task(scan_quality(files, language, tracked_paths))
 
     results = {

@@ -89,6 +89,21 @@ async def replace_results(
         ))
 
 
+async def results_by_aspect(analysis_id: uuid.UUID, db: AsyncSession) -> dict[str, dict]:
+    result = await db.execute(
+        select(AnalysisResult).where(AnalysisResult.analysis_id == analysis_id)
+    )
+
+    return {
+        row.aspect: {
+            "status": row.status,
+            "issues": row.issues or [],
+            "recommendations": row.recommendations or [],
+        }
+        for row in result.scalars().all()
+    }
+
+
 async def count_runs_today(github_id: int, db: AsyncSession) -> int:
     result = await db.execute(
         select(func.count()).select_from(AnalysisLog).where(

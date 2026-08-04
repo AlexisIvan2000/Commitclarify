@@ -91,24 +91,46 @@ async def start_analysis(
     return {"analysis_id": str(analysis.id), "language": analysis.language}
 
 
+SSE_HEADERS = {
+    "Cache-Control": "no-cache",
+    "X-Accel-Buffering": "no",
+    "Connection": "close",
+}
+
+
 @router.get("/{analysis_id}/stream")
-async def stream_analysis(
+async def stream_scan(
     analysis_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     analysis = await _owned_analysis(analysis_id, current_user, db)
-    pipeline.assert_runnable(analysis)
+    pipeline.assert_scannable(analysis)
 
     github_token = decrypt_github_token(current_user.access_token)
 
     return StreamingResponse(
-        pipeline.run(analysis, github_token, db),
+        pipeline.run_scan_phase(analysis, github_token, db),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
+        headers=SSE_HEADERS,
+    )
+
+
+@router.get("/{analysis_id}/deepen/stream")
+async def stream_ai_analysis(
+    analysis_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    analysis = await _owned_analysis(analysis_id, current_user, db)
+    pipeline.assert_analyzable(analysis)
+
+    github_token = decrypt_github_token(current_user.access_token)
+
+    return StreamingResponse(
+        pipeline.run_ai_phase(analysis, github_token, db),
+        media_type="text/event-stream",
+        headers=SSE_HEADERS,
     )
 
 

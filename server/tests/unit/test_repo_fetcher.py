@@ -286,6 +286,34 @@ async def test_the_detail_never_enters_the_partition(fake_api):
     assert buckets.isdisjoint(stats["fetched_detail"])
 
 
+def test_the_two_vocabularies_can_never_overlap():
+    from services.github.repo_fetcher import (
+        EXCLUSION_REASONS,
+        FAILURE_REASONS,
+        FETCHED_NOTES,
+        PARTITION_REASONS,
+    )
+
+    assert FETCHED_NOTES.isdisjoint(PARTITION_REASONS)
+    assert EXCLUSION_REASONS.isdisjoint(FAILURE_REASONS)
+
+
+@pytest.mark.asyncio
+async def test_every_reported_reason_belongs_to_a_declared_vocabulary(fake_api):
+    from services.github.repo_fetcher import (
+        EXCLUSION_REASONS,
+        FAILURE_REASONS,
+        FETCHED_NOTES,
+        fetch_repo_files,
+    )
+
+    stats = (await fetch_repo_files("owner", "repo", "token"))["stats"]
+
+    assert set(stats["excluded"]) <= EXCLUSION_REASONS
+    assert set(stats["fetch_failures"]) <= FAILURE_REASONS
+    assert set(stats["fetched_detail"]) <= FETCHED_NOTES
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("status,expected", [
     (401, "invalide ou expire"),

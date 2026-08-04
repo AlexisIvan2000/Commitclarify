@@ -38,6 +38,26 @@ FETCH_EXCEPTION = "fetch_exception"
 
 DELIBERATE_SKIPS = frozenset({SKIPPED_TOO_MANY_LINES, SKIPPED_MINIFIED})
 
+EXCLUSION_REASONS = frozenset({
+    EXCLUDED_BY_PATH,
+    EXCLUDED_BY_EXTENSION,
+    SKIPPED_TOO_LARGE,
+    CAPPED_OVER_LIMIT,
+    SKIPPED_TOO_MANY_LINES,
+    SKIPPED_MINIFIED,
+})
+
+FAILURE_REASONS = frozenset({
+    FETCH_HTTP_ERROR,
+    FETCH_CONTENT_UNAVAILABLE,
+    FETCH_UNEXPECTED_PAYLOAD,
+    FETCH_EXCEPTION,
+})
+
+PARTITION_REASONS = EXCLUSION_REASONS | FAILURE_REASONS
+
+FETCHED_NOTES = frozenset({EMPTY_FILES})
+
 
 def _rejection_reason(path: str, size: int) -> Optional[str]:
     p = Path(path)
@@ -217,6 +237,22 @@ async def fetch_repo_files(
     )
 
     return _repo_data(repo_sha, results, tree, not_fetched, fetched_notes)
+
+
+def coverage_of(repo_data: dict) -> dict:
+    stats = repo_data["stats"]
+
+    return {
+        "sha": repo_data["sha"],
+        "tracked_files": stats["tracked"],
+        "eligible_files": stats["total_detected"],
+        "fetched_files": stats["fetched"],
+        "excluded": stats["excluded"],
+        "fetch_failures": stats["fetch_failures"],
+        "fetched_detail": stats["fetched_detail"],
+        "capped_over_limit": stats["capped_over_limit"],
+        "tree_truncated": repo_data["truncated"],
+    }
 
 
 def _repo_data(

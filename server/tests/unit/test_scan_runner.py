@@ -81,6 +81,15 @@ async def test_deliberate_exclusions_do_not_make_a_scan_partial():
 
 
 @pytest.mark.asyncio
+async def test_completeness_is_the_only_field_describing_coverage():
+    scan = await run_scan(CLEAN_FILES, coverage={"tree_truncated": False})
+    metrics = [result["metrics"] for result in scan["axes"].values()]
+
+    assert "complete" in scan
+    assert all("sample_covers_repository" not in entry for entry in metrics)
+
+
+@pytest.mark.asyncio
 async def test_axes_with_issues_keep_their_status_when_coverage_is_partial():
     scan = await run_scan(FILES, coverage={"tree_truncated": True})
 

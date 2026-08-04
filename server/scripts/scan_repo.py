@@ -25,22 +25,6 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def build_coverage(repo_data: dict) -> dict:
-    stats = repo_data["stats"]
-
-    return {
-        "sha": repo_data["sha"],
-        "tracked_files": stats["tracked"],
-        "eligible_files": stats["total_detected"],
-        "fetched_files": stats["fetched"],
-        "excluded": stats["excluded"],
-        "fetch_failures": stats["fetch_failures"],
-        "fetched_detail": stats["fetched_detail"],
-        "capped_over_limit": stats["capped_over_limit"],
-        "tree_truncated": repo_data["truncated"],
-    }
-
-
 def print_summary(scan: dict) -> None:
     coverage = scan["coverage"]
     print(f"scan_version={scan['scan_version']}  langue={scan['language']}")
@@ -78,7 +62,7 @@ def print_summary(scan: dict) -> None:
 
 
 async def main() -> int:
-    from services.github.repo_fetcher import fetch_repo_files
+    from services.github.repo_fetcher import coverage_of, fetch_repo_files
     from services.scan import run_scan
 
     arguments = parse_arguments()
@@ -113,7 +97,7 @@ async def main() -> int:
         repo_data["files"],
         arguments.language,
         tracked_paths=repo_data["tracked_paths"],
-        coverage=build_coverage(repo_data),
+        coverage=coverage_of(repo_data),
     )
 
     payload = json.dumps(scan, indent=2, ensure_ascii=False)

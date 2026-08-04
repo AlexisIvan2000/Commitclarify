@@ -72,7 +72,6 @@ def scan_documentation(
         "env_used": len(used),
         "env_declared": len(declared),
         "has_env_example": has_env_example,
-        "sample_covers_repository": len(sample) == len(tracked),
     }
 
     logger.info("Scan documentation: %d findings", len(findings))

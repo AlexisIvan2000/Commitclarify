@@ -222,7 +222,6 @@ async def test_the_same_sample_without_the_tree_produces_the_false_positives():
     result = await scan_quality(sample)
 
     assert {"quality.no_lockfile", "quality.no_ci", "quality.no_tests"} <= _rules(result)
-    assert result["metrics"]["sample_covers_repository"] is True
 
 
 @pytest.mark.asyncio
@@ -233,9 +232,9 @@ async def test_the_sample_counts_are_labelled_as_such():
     )
 
     assert result["metrics"]["source_files_in_sample"] == 1
-    assert result["metrics"]["sample_covers_repository"] is False
     assert "source_files" not in result["metrics"]
     assert "test_ratio" not in result["metrics"]
+    assert "sample_covers_repository" not in result["metrics"]
 
 
 @pytest.mark.asyncio

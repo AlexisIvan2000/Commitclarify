@@ -171,7 +171,6 @@ def _metrics(
 
     return {
         "ecosystems": sorted(detected),
-        "sample_covers_repository": len(sample_paths) == len(repository_paths),
         **_sample_counts(sample_paths),
         "has_sources": any(_is_source(path) for path in repository_paths),
         "has_tests": any(is_test_path(path) for path in repository_paths),

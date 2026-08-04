@@ -1,6 +1,6 @@
 import hashlib
 
-SCAN_VERSION = 4
+SCAN_VERSION = 5
 
 SEVERITY_ORDER = ("critical", "high", "medium", "low", "info")
 
