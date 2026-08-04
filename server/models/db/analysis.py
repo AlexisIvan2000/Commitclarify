@@ -24,6 +24,7 @@ class Analysis(Base):
     language         : Mapped[str]             = mapped_column(String(5), default="fr", server_default="fr")
     scan_version     : Mapped[int | None]      = mapped_column(Integer, nullable=True)
     config_hash      : Mapped[str | None]      = mapped_column(String(32), nullable=True)
+    coverage         : Mapped[dict | None]     = mapped_column(JSON, nullable=True)
     created_at       : Mapped[datetime]        = mapped_column(DateTime, default=utcnow)
     phase_started_at : Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at     : Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

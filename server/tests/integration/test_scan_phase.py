@@ -269,6 +269,46 @@ async def test_a_newer_scan_version_bypasses_the_cache(db, test_user):
 
 
 @pytest.mark.asyncio
+async def test_the_report_is_fully_reconstructible_from_the_api(
+    client, auth_headers, db, test_user, fetched,
+):
+    analysis = await _pending(db, test_user)
+    await _drain(pipeline.run_scan_phase(analysis, "token", db))
+
+    payload = (await client.get(f"/analyze/{analysis.id}", headers=auth_headers)).json()
+
+    assert payload["status"] == "scanned"
+    assert payload["scan_version"] == pipeline.SCAN_VERSION
+    assert payload["coverage"]["complete"] is True
+    assert payload["coverage"]["sha"] == REPO_DATA["sha"]
+    assert payload["coverage"]["tracked_files"] == 5
+
+    quality = next(r for r in payload["results"] if r["aspect"] == "quality_check")
+    assert quality["metrics"]["complexity"]["threshold"] == 10
+
+    secrets = next(r for r in payload["results"] if r["aspect"] == "secrets_detection")
+    assert all(issue["id"] for issue in secrets["issues"])
+
+
+@pytest.mark.asyncio
+async def test_an_incomplete_scan_records_what_was_not_looked_at(db, test_user):
+    analysis = await _pending(db, test_user)
+    truncated = {
+        **REPO_DATA,
+        "truncated": True,
+        "stats": {**REPO_DATA["stats"], "capped_over_limit": 2309},
+    }
+    repository, sha, files = _github(truncated)
+
+    with repository, sha, files:
+        await _drain(pipeline.run_scan_phase(analysis, "token", db))
+
+    assert analysis.coverage["complete"] is False
+    assert analysis.coverage["tree_truncated"] is True
+    assert analysis.coverage["capped_over_limit"] == 2309
+
+
+@pytest.mark.asyncio
 async def test_metrics_survive_persistence(db, test_user, fetched):
     analysis = await _pending(db, test_user)
     await _drain(pipeline.run_scan_phase(analysis, "token", db))

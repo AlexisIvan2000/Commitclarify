@@ -10,6 +10,7 @@ class AnalysisResultResponse(BaseModel):
     status: str
     issues: list
     recommendations: list
+    metrics: dict | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -21,6 +22,8 @@ class AnalysisResponse(BaseModel):
     repo_sha: str | None
     status: str
     language: str
+    scan_version: int | None = None
+    coverage: dict | None = None
     created_at: datetime
     completed_at: datetime | None
 

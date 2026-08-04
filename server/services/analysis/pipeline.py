@@ -174,6 +174,7 @@ async def run_scan_phase(
         analysis.repo_sha = repo_sha
         analysis.scan_version = SCAN_VERSION
         analysis.config_hash = CONFIG_HASH
+        analysis.coverage = {**scan["coverage"], "complete": scan["complete"]}
         analysis.completed_at = utcnow()
         await db.commit()
 
