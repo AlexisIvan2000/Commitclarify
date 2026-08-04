@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { key: 'account', to: '/account', Icon: Icons.account },
 ]
 
-function Sidebar({ quota }) {
+function Sidebar({ user, quota, onLogout }) {
   const t = useTranslation()
 
   return (
@@ -24,7 +24,7 @@ function Sidebar({ quota }) {
       </div>
 
       <nav className="sidebar-nav">
-        {NAV_ITEMS.map(item => {
+        {NAV_ITEMS.map((item) => {
           const ItemIcon = item.Icon
 
           return (
@@ -33,19 +33,39 @@ function Sidebar({ quota }) {
               to={item.to}
               className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
             >
-              <ItemIcon size={18} variant="Linear" />
+              <ItemIcon size={18} />
               <span>{t.nav[item.key]}</span>
             </NavLink>
           )
         })}
       </nav>
 
-      {Number.isInteger(quota?.remaining) && (
-        <div className="sidebar-quota">
-          <span className="sidebar-quota-value">{quota.remaining}</span>
-          <span className="sidebar-quota-label">{t.nav.triagesLeft}</span>
-        </div>
-      )}
+      <div className="sidebar-foot">
+        {Number.isInteger(quota?.remaining) && (
+          <div className="sidebar-quota">
+            <span className="sidebar-quota-value">{quota.remaining}</span>
+            <span className="sidebar-quota-label">{t.nav.triagesLeft}</span>
+          </div>
+        )}
+
+        {user && (
+          <div className="sidebar-user">
+            <NavLink to="/account" className="sidebar-user-link">
+              <img src={user.avatar_url} alt="" className="sidebar-avatar" />
+              <span className="sidebar-user-name">{user.username || user.login}</span>
+            </NavLink>
+            <button
+              type="button"
+              className="sidebar-logout"
+              onClick={onLogout}
+              title={t.actions.logout}
+              aria-label={t.actions.logout}
+            >
+              <Icons.logout size={16} />
+            </button>
+          </div>
+        )}
+      </div>
     </aside>
   )
 }

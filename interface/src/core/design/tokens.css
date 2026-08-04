@@ -139,8 +139,14 @@
   box-shadow: inset 2px 0 0 var(--link);
 }
 
-.sidebar-quota {
+.sidebar-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
   margin-top: auto;
+}
+
+.sidebar-quota {
   padding: 0.7rem 0.75rem;
   background: var(--surface-muted);
   border: 1px solid var(--border-soft);
@@ -158,6 +164,69 @@
 
 .sidebar-quota-label { font-size: 11.5px; color: var(--ink-faint); line-height: 1.35; }
 
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border-soft);
+}
+
+.sidebar-user-link {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.4rem;
+  border-radius: var(--radius);
+  color: var(--ink-muted);
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.sidebar-user-link:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.sidebar-avatar {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  object-fit: cover;
+}
+
+.sidebar-user-name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sidebar-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  color: var(--ink-faint);
+  background: none;
+  border: none;
+  border-radius: var(--radius);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-logout:hover {
+  color: var(--sev-critical-fg);
+  background: var(--sev-critical-bg);
+}
+
 .app-content { padding: 2rem 2.5rem 4rem; max-width: 1180px; }
 
 @media (max-width: 880px) {
@@ -174,6 +243,10 @@
   }
   .sidebar-nav { flex-direction: row; }
   .sidebar-link span { display: none; }
-  .sidebar-quota { margin-top: 0; margin-left: auto; }
+  .sidebar-foot { flex-direction: row; align-items: center; margin-top: 0; margin-left: auto; }
+  .sidebar-quota { padding: 0.35rem 0.6rem; }
+  .sidebar-quota-label { display: none; }
+  .sidebar-user { padding-top: 0; border-top: none; }
+  .sidebar-user-name { display: none; }
   .app-content { padding: 1.25rem; }
 }
