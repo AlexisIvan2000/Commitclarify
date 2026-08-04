@@ -71,6 +71,7 @@ async def run_ruff_on_files(files: list[dict], language: str = DEFAULT_LANGUAGE)
                 "title": label,
                 "rule": code,
                 "file_path": path_map.get(abs_path, r.get("filename", "")),
+                "line": line if isinstance(line, int) else None,
                 "description": text("issue.at_line", language, line=line, message=message),
                 "code_hint": extract_line(abs_path, line),
                 "source": "ruff",

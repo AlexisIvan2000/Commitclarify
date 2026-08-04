@@ -9,7 +9,7 @@ RULE_MODULES = sorted(
     path for path in SCAN_PACKAGE.glob("*.py") if path.name != "__init__.py"
 )
 
-EXPECTED_VERSION_AND_DIGEST = (1, "1563e6a4d313bee7")
+EXPECTED_VERSION_AND_DIGEST = (2, "a6bb836ddaa35cd0")
 
 BUMP_INSTRUCTIONS = (
     "Les regles du scan ont change.\n"

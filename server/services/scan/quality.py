@@ -69,6 +69,7 @@ def _linter_findings(issues: list[dict]) -> list[dict]:
             issue["title"],
             issue["description"],
             file_path=issue["file_path"],
+            line=issue.get("line"),
             evidence=issue["code_hint"],
             source=issue["source"],
             identity=issue["code_hint"] or f"{issue['rule']}#{index}",

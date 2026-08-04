@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import logging
+from collections import Counter
 from pathlib import Path
 from typing import Optional
 
@@ -21,19 +22,37 @@ from services.github.client import headers as github_headers
 logger = logging.getLogger(__name__)
 
 
-def _is_relevant(path: str, size: int) -> bool:
+EXCLUDED_BY_PATH = "excluded_by_path"
+EXCLUDED_BY_EXTENSION = "excluded_by_extension"
+SKIPPED_TOO_LARGE = "skipped_too_large"
+
+FETCH_HTTP_ERROR = "fetch_http_error"
+FETCH_EMPTY_BODY = "fetch_empty_body"
+FETCH_EXCEPTION = "fetch_exception"
+SKIPPED_TOO_MANY_LINES = "skipped_too_many_lines"
+SKIPPED_MINIFIED = "skipped_minified"
+
+
+def _rejection_reason(path: str, size: int) -> Optional[str]:
     p = Path(path)
 
     if set(p.parts[:-1]) & EXCLUDED_DIRS:
-        return False
+        return EXCLUDED_BY_PATH
 
     if size > MAX_FILE_SIZE:
-        return False
+        return SKIPPED_TOO_LARGE
 
     if p.name in ALLOWED_FILENAMES:
-        return True
+        return None
 
-    return p.suffix.lower() in ALLOWED_EXTENSIONS
+    if p.suffix.lower() in ALLOWED_EXTENSIONS:
+        return None
+
+    return EXCLUDED_BY_EXTENSION
+
+
+def _is_relevant(path: str, size: int) -> bool:
+    return _rejection_reason(path, size) is None
 
 
 async def get_repo_tree(
@@ -41,7 +60,7 @@ async def get_repo_tree(
     repo: str,
     github_token: str,
     branch: str = "HEAD",
-) -> tuple[list[dict], bool, list[str]]:
+) -> dict:
     data = await get_json(
         f"{API_ROOT}/repos/{owner}/{repo}/git/trees/{branch}",
         github_token,
@@ -49,29 +68,37 @@ async def get_repo_tree(
         params={"recursive": "1"},
     )
 
-    truncated = data.get("truncated", False)
-
     blobs = [item for item in data.get("tree", []) if item["type"] == "blob"]
-    tracked_paths = [item["path"] for item in blobs]
 
-    files = [
-        {
+    eligible = []
+    exclusions = Counter()
+
+    for item in blobs:
+        reason = _rejection_reason(item["path"], item.get("size", 0))
+        if reason:
+            exclusions[reason] += 1
+            continue
+
+        eligible.append({
             "path": item["path"],
             "sha":  item["sha"],
             "size": item.get("size", 0),
-        }
-        for item in blobs
-        if _is_relevant(item["path"], item.get("size", 0))
-    ]
+        })
 
-    # Limiter le nombre de fichiers
-    files = files[:MAX_REPO_FILES]
+    capped = len(eligible) > MAX_REPO_FILES
 
     logger.info(
-        "Arbre repo %s/%s: %d fichiers filtres sur %d versionnes (truncated=%s)",
-        owner, repo, len(files), len(tracked_paths), truncated,
+        "Arbre repo %s/%s: %d eligibles sur %d versionnes (truncated=%s, exclusions=%s)",
+        owner, repo, len(eligible), len(blobs), data.get("truncated", False), dict(exclusions),
     )
-    return files, truncated, tracked_paths
+
+    return {
+        "files": eligible[:MAX_REPO_FILES],
+        "truncated": data.get("truncated", False),
+        "tracked_paths": [item["path"] for item in blobs],
+        "exclusions": dict(exclusions),
+        "capped_at_limit": capped,
+    }
 
 
 async def _fetch_file_content(
@@ -80,28 +107,30 @@ async def _fetch_file_content(
     repo: str,
     file: dict,
     headers: dict,
-) -> Optional[dict]:
-    url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file['path']}"
+) -> tuple[Optional[dict], Optional[str]]:
+    url = f"{API_ROOT}/repos/{owner}/{repo}/contents/{file['path']}"
 
     try:
         response = await client.get(url, headers=headers, timeout=15)
 
         if response.status_code != 200:
-            return None
+            logger.warning(
+                "Contenu non recupere (%d) pour %s", response.status_code, file["path"],
+            )
+            return None, FETCH_HTTP_ERROR
 
-        data = response.json()
-        encoded = data.get("content", "")
+        encoded = response.json().get("content", "")
         if not encoded:
-            return None
+            return None, FETCH_EMPTY_BODY
 
         content = base64.b64decode(encoded.replace("\n", "")).decode("utf-8", errors="replace")
 
         # Ignorer les fichiers minifiés ou générés (trop de caractères sur peu de lignes)
         lines = content.split("\n")
         if len(lines) > MAX_FILE_LINES:
-            return None
+            return None, SKIPPED_TOO_MANY_LINES
         if len(lines) <= 3 and len(content) > 5000:
-            return None
+            return None, SKIPPED_MINIFIED
 
         return {
             "path":     file["path"],
@@ -109,10 +138,11 @@ async def _fetch_file_content(
             "size":     file["size"],
             "content":  content,
             "language": Path(file["path"]).suffix.lstrip(".") or "text",
-        }
+        }, None
 
-    except Exception:
-        return None
+    except Exception as exc:
+        logger.warning("Echec de recuperation de %s: %s", file["path"], exc)
+        return None, FETCH_EXCEPTION
 
 
 async def fetch_repo_files(
@@ -125,48 +155,59 @@ async def fetch_repo_files(
 
     repo_sha = await get_repo_latest_sha(owner, repo, github_token, branch)
 
-    filtered_files, truncated, tracked_paths = await get_repo_tree(owner, repo, github_token, branch)
+    tree = await get_repo_tree(owner, repo, github_token, branch)
+    eligible = tree["files"]
 
-    if not filtered_files:
-        return {
-            "sha": repo_sha,
-            "files": [],
-            "readme": None,
-            "truncated": truncated,
-            "tracked_paths": tracked_paths,
-            "stats": {"total_detected": 0, "fetched": 0, "skipped": 0, "tracked": len(tracked_paths)},
-        }
+    if not eligible:
+        return _repo_data(repo_sha, [], tree, Counter())
 
     headers = github_headers(github_token)
 
     results = []
+    failures = Counter()
+
     async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-        for i in range(0, len(filtered_files), BATCH_SIZE):
-            batch = filtered_files[i:i + BATCH_SIZE]
+        for i in range(0, len(eligible), BATCH_SIZE):
+            batch = eligible[i:i + BATCH_SIZE]
             tasks = [
                 _fetch_file_content(client, owner, repo, f, headers)
                 for f in batch
             ]
-            batch_results = await asyncio.gather(*tasks)
-            results.extend([r for r in batch_results if r is not None])
+            for entry, reason in await asyncio.gather(*tasks):
+                if entry is None:
+                    failures[reason] += 1
+                else:
+                    results.append(entry)
 
-    readme = next(
-        (f for f in results if Path(f["path"]).name.lower() == "readme.md"),
-        None
+    logger.info(
+        "Fetch %s/%s termine: %d/%d fichiers recuperes (echecs=%s)",
+        owner, repo, len(results), len(eligible), dict(failures),
     )
 
-    logger.info("Fetch %s/%s termine: %d/%d fichiers recuperes", owner, repo, len(results), len(filtered_files))
+    return _repo_data(repo_sha, results, tree, failures)
+
+
+def _repo_data(repo_sha: str, files: list[dict], tree: dict, failures: Counter) -> dict:
+    eligible_count = len(tree["files"])
+    readme = next(
+        (f for f in files if Path(f["path"]).name.lower() == "readme.md"),
+        None,
+    )
+
     return {
         "sha":           repo_sha,
-        "files":         results,
+        "files":         files,
         "readme":        readme,
-        "truncated":     truncated,
-        "tracked_paths": tracked_paths,
+        "truncated":     tree["truncated"],
+        "tracked_paths": tree["tracked_paths"],
         "stats":         {
-            "total_detected": len(filtered_files),
-            "fetched":        len(results),
-            "skipped":        len(filtered_files) - len(results),
-            "tracked":        len(tracked_paths),
+            "total_detected":  eligible_count,
+            "fetched":         len(files),
+            "skipped":         eligible_count - len(files),
+            "tracked":         len(tree["tracked_paths"]),
+            "excluded":        tree["exclusions"],
+            "fetch_failures":  dict(failures),
+            "capped_at_limit": tree["capped_at_limit"],
         },
     }
 

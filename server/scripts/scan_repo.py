@@ -33,7 +33,9 @@ def build_coverage(repo_data: dict) -> dict:
         "tracked_files": stats["tracked"],
         "eligible_files": stats["total_detected"],
         "fetched_files": stats["fetched"],
-        "skipped_files": stats["skipped"],
+        "excluded": stats["excluded"],
+        "fetch_failures": stats["fetch_failures"],
+        "capped_at_limit": stats["capped_at_limit"],
         "tree_truncated": repo_data["truncated"],
     }
 
@@ -45,7 +47,12 @@ def print_summary(scan: dict) -> None:
         f"couverture: {coverage['fetched_files']}/{coverage['eligible_files']} fichiers analyses "
         f"sur {coverage['tracked_files']} versionnes"
         + ("  [ARBRE TRONQUE PAR GITHUB]" if coverage["tree_truncated"] else "")
+        + ("  [PLAFOND MAX_REPO_FILES ATTEINT]" if coverage["capped_at_limit"] else "")
     )
+    for reason, count in sorted(coverage["excluded"].items()):
+        print(f"  ecartes  {reason:26} {count}")
+    for reason, count in sorted(coverage["fetch_failures"].items()):
+        print(f"  echecs   {reason:26} {count}")
     print(f"findings: {scan['summary']['findings']}  ignores: {scan['summary']['dropped']}")
     print(f"severites: {scan['summary']['by_severity']}\n")
 

@@ -129,6 +129,7 @@ async def run_eslint_on_files(files: list[dict], language: str = DEFAULT_LANGUAG
                     "title": text(f"rule.{rule_id}", language),
                     "rule": rule_id,
                     "file_path": original_path,
+                    "line": line if isinstance(line, int) else None,
                     "description": text(
                         "issue.at_line", language, line=line, message=msg.get("message", ""),
                     ),

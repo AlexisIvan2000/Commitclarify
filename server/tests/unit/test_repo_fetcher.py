@@ -63,32 +63,47 @@ async def test_redirections_are_followed():
 @pytest.mark.asyncio
 async def test_tracked_paths_keep_what_the_analysis_filter_discards():
     with _patched(TREE):
-        files, truncated, tracked = await get_repo_tree("owner", "repo", "token")
+        tree = await get_repo_tree("owner", "repo", "token")
 
-    assert [entry["path"] for entry in files] == ["app.py"]
-    assert tracked == [
+    assert [entry["path"] for entry in tree["files"]] == ["app.py"]
+    assert tree["tracked_paths"] == [
         "app.py",
         "node_modules/left-pad/index.js",
         "assets/logo.png",
         "generated.py",
     ]
-    assert truncated is False
+    assert tree["truncated"] is False
+
+
+@pytest.mark.asyncio
+async def test_every_discarded_file_is_counted_under_a_named_reason():
+    with _patched(TREE):
+        tree = await get_repo_tree("owner", "repo", "token")
+
+    assert tree["exclusions"] == {
+        "excluded_by_path": 1,
+        "excluded_by_extension": 1,
+        "skipped_too_large": 1,
+    }
+    assert sum(tree["exclusions"].values()) + len(tree["files"]) == len(tree["tracked_paths"])
 
 
 @pytest.mark.asyncio
 async def test_tracked_paths_exclude_directories():
     with _patched(TREE):
-        _, _, tracked = await get_repo_tree("owner", "repo", "token")
+        tree = await get_repo_tree("owner", "repo", "token")
 
-    assert "src" not in tracked
+    assert "src" not in tree["tracked_paths"]
 
 
 @pytest.mark.asyncio
 async def test_truncated_flag_is_propagated():
     with _patched({"truncated": True, "tree": []}):
-        files, truncated, tracked = await get_repo_tree("owner", "repo", "token")
+        tree = await get_repo_tree("owner", "repo", "token")
 
-    assert (files, truncated, tracked) == ([], True, [])
+    assert tree["truncated"] is True
+    assert tree["files"] == []
+    assert tree["capped_at_limit"] is False
 
 
 @pytest.mark.asyncio
