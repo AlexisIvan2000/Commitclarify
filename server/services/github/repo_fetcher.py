@@ -15,6 +15,8 @@ from core.file_rules import (
     MAX_FILE_SIZE,
     MAX_REPO_FILES,
 )
+from services.github.client import API_ROOT, get_json
+from services.github.client import headers as github_headers
 
 logger = logging.getLogger(__name__)
 
@@ -39,32 +41,18 @@ async def get_repo_tree(
     repo: str,
     github_token: str,
     branch: str = "HEAD",
-) -> tuple[list[dict], bool]:
-    """
-    Récupère l'arbre complet du repo en un seul appel.
-    Retourne la liste des fichiers filtrés avec path + sha + size.
-    """
-    url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/{branch}"
-    headers = {
-        "Authorization": f"Bearer {github_token}",
-        "Accept": "application/vnd.github+json",
-    }
+) -> tuple[list[dict], bool, list[str]]:
+    data = await get_json(
+        f"{API_ROOT}/repos/{owner}/{repo}/git/trees/{branch}",
+        github_token,
+        f"L'arbre de {owner}/{repo}@{branch}",
+        params={"recursive": "1"},
+    )
 
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.get(url, headers=headers, params={"recursive": "1"})
-
-    if response.status_code == 404:
-        logger.warning("Repo introuvable: %s/%s", owner, repo)
-        raise ValueError(f"Repository {owner}/{repo} introuvable ou inaccessible.")
-    if response.status_code == 409:
-        logger.warning("Repo vide: %s/%s", owner, repo)
-        raise ValueError("Le repository est vide.")
-    if response.status_code != 200:
-        logger.error("Erreur GitHub tree API: status=%d pour %s/%s", response.status_code, owner, repo)
-        raise ValueError(f"Erreur GitHub tree: {response.status_code}")
-
-    data = response.json()
     truncated = data.get("truncated", False)
+
+    blobs = [item for item in data.get("tree", []) if item["type"] == "blob"]
+    tracked_paths = [item["path"] for item in blobs]
 
     files = [
         {
@@ -72,16 +60,18 @@ async def get_repo_tree(
             "sha":  item["sha"],
             "size": item.get("size", 0),
         }
-        for item in data.get("tree", [])
-        if item["type"] == "blob"
-        and _is_relevant(item["path"], item.get("size", 0))
+        for item in blobs
+        if _is_relevant(item["path"], item.get("size", 0))
     ]
 
     # Limiter le nombre de fichiers
     files = files[:MAX_REPO_FILES]
 
-    logger.info("Arbre repo %s/%s: %d fichiers filtres (truncated=%s)", owner, repo, len(files), truncated)
-    return files, truncated
+    logger.info(
+        "Arbre repo %s/%s: %d fichiers filtres sur %d versionnes (truncated=%s)",
+        owner, repo, len(files), len(tracked_paths), truncated,
+    )
+    return files, truncated, tracked_paths
 
 
 async def _fetch_file_content(
@@ -133,20 +123,24 @@ async def fetch_repo_files(
 ) -> dict:
    
 
-    repo_sha = await get_repo_latest_sha(owner, repo, github_token)
+    repo_sha = await get_repo_latest_sha(owner, repo, github_token, branch)
 
-    filtered_files, truncated = await get_repo_tree(owner, repo, github_token, branch)
+    filtered_files, truncated, tracked_paths = await get_repo_tree(owner, repo, github_token, branch)
 
     if not filtered_files:
-        return {"sha": repo_sha, "files": [], "readme": None, "truncated": truncated, "stats": {"total_detected": 0, "fetched": 0, "skipped": 0}}
+        return {
+            "sha": repo_sha,
+            "files": [],
+            "readme": None,
+            "truncated": truncated,
+            "tracked_paths": tracked_paths,
+            "stats": {"total_detected": 0, "fetched": 0, "skipped": 0, "tracked": len(tracked_paths)},
+        }
 
-    headers = {
-        "Authorization": f"Bearer {github_token}",
-        "Accept": "application/vnd.github+json",
-    }
+    headers = github_headers(github_token)
 
     results = []
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
         for i in range(0, len(filtered_files), BATCH_SIZE):
             batch = filtered_files[i:i + BATCH_SIZE]
             tasks = [
@@ -163,14 +157,16 @@ async def fetch_repo_files(
 
     logger.info("Fetch %s/%s termine: %d/%d fichiers recuperes", owner, repo, len(results), len(filtered_files))
     return {
-        "sha":       repo_sha,
-        "files":     results,
-        "readme":    readme,
-        "truncated": truncated,
-        "stats":     {
+        "sha":           repo_sha,
+        "files":         results,
+        "readme":        readme,
+        "truncated":     truncated,
+        "tracked_paths": tracked_paths,
+        "stats":         {
             "total_detected": len(filtered_files),
             "fetched":        len(results),
             "skipped":        len(filtered_files) - len(results),
+            "tracked":        len(tracked_paths),
         },
     }
 
@@ -179,15 +175,13 @@ async def get_repo_latest_sha(
     owner: str,
     repo: str,
     github_token: str,
+    branch: str = "HEAD",
 ) -> str:
-    async with httpx.AsyncClient(timeout=15) as client:
-        response = await client.get(
-            f"https://api.github.com/repos/{owner}/{repo}/commits/HEAD",
-            headers={
-                "Authorization": f"Bearer {github_token}",
-                "Accept": "application/vnd.github+json",
-            }
-        )
-    if response.status_code != 200:
-        raise ValueError("Impossible de récupérer le SHA du repo.")
-    return response.json()["sha"]
+    commit = await get_json(
+        f"{API_ROOT}/repos/{owner}/{repo}/commits/{branch}",
+        github_token,
+        f"Le dernier commit de {owner}/{repo}@{branch}",
+        timeout=15,
+    )
+
+    return commit["sha"]

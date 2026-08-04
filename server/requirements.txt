@@ -77,6 +77,7 @@ orjson==3.11.7
 ormsgpack==1.12.2
 overrides==7.7.0
 packaging==26.0
+pathspec==1.1.1
 pillow==12.1.1
 pluggy==1.6.0
 proto-plus==1.27.1

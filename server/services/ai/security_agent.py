@@ -24,7 +24,6 @@ SECRET_PATTERNS = [
 EXCLUDED_FILES = {
     ".env.example", ".env.sample", ".env.template", ".env.local.example", ".env.dist",
 }
-EXCLUDED_FILE_PATTERNS = re.compile(r"test_|_test\.|\.test\.|spec\.", re.IGNORECASE)
 EXCLUDED_LINE_PATTERNS = re.compile(
     r'placeholder|your_|changeme|xxx|TODO|mock|fake|dummy|fixture',
     re.IGNORECASE,
@@ -107,10 +106,7 @@ def _scan_secrets_regex(files: list[dict], language: str = DEFAULT_LANGUAGE) -> 
         if not content:
             continue
 
-        filename = Path(path).name
-        if filename in EXCLUDED_FILES:
-            continue
-        if EXCLUDED_FILE_PATTERNS.search(filename):
+        if Path(path).name in EXCLUDED_FILES:
             continue
 
         for line_num, line in enumerate(content.splitlines(), 1):

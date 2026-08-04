@@ -45,7 +45,7 @@ REGLES STRICTES :
 - NE SIGNALE PAS les variables qui chargent depuis os.environ, os.getenv, process.env, dotenv
 - NE SIGNALE PAS les placeholders (ex: "your-api-key-here", "xxx", "changeme")
 - NE SIGNALE PAS les cles de test evidentes (ex: "test-secret-key", "secret" dans un fichier de test)
-- NE SIGNALE PAS les fichiers de test (test_, _test, spec., fixtures, mocks) — les fausses cles dans les tests sont intentionnelles
+- EN REVANCHE, une valeur au format d'une vraie cle fournisseur (sk-, AKIA, ghp_, xox, SG., BEGIN PRIVATE KEY) DOIT etre signalee meme dans un fichier de test : une cle reelle commitee dans un test est tout aussi compromise
 - NE SIGNALE PAS les definitions de regex ou patterns de detection (ex: r"AKIA...", r"sk-...")
 - NE SIGNALE PAS les URLs publiques d'API
 - EN REVANCHE, dans un fichier .env versionne (hors .env.example), toute valeur litterale non placeholder EST un secret reel : signale-la

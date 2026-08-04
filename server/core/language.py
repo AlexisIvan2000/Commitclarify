@@ -154,6 +154,183 @@ TEXTS: dict[str, dict[str, str]] = {
         ),
     },
 
+    "scan.gitignore.unprotected.title": {
+        "fr": "{name} versionne et non ignore",
+        "en": "{name} is tracked and not ignored",
+    },
+    "scan.gitignore.unprotected.description": {
+        "fr": (
+            "Le fichier {name} est suivi par Git et aucune regle du .gitignore ne le couvre. "
+            "Ajoutez la regle, retirez-le de l'index (git rm --cached) et faites tourner "
+            "les secrets qu'il contient."
+        ),
+        "en": (
+            "{name} is tracked by Git and no .gitignore rule covers it. Add the rule, remove it "
+            "from the index (git rm --cached), then rotate any secret it holds."
+        ),
+    },
+    "scan.gitignore.tracked_ignored.title": {
+        "fr": "{name} est ignore mais toujours versionne",
+        "en": "{name} is ignored yet still tracked",
+    },
+    "scan.gitignore.tracked_ignored.description": {
+        "fr": (
+            "Une regle du .gitignore couvre {name}, mais le fichier est deja suivi par Git : "
+            "la regle ne s'applique pas retroactivement. Utilisez git rm --cached {name}."
+        ),
+        "en": (
+            "A .gitignore rule covers {name}, but the file is already tracked by Git: the rule "
+            "does not apply retroactively. Use git rm --cached {name}."
+        ),
+    },
+    "scan.gitignore.rule_missing.title": {
+        "fr": "Regle .gitignore manquante : {rule}",
+        "en": "Missing .gitignore rule: {rule}",
+    },
+    "scan.gitignore.rule_missing.description": {
+        "fr": "Aucune regle du .gitignore ne couvre {rule}, alors que ce projet devrait l'exclure.",
+        "en": "No .gitignore rule covers {rule}, although this project should exclude it.",
+    },
+
+    "scan.quality.complex_function.title": {
+        "fr": "Fonction trop complexe : {name}",
+        "en": "Function too complex: {name}",
+    },
+    "scan.quality.complex_function.description": {
+        "fr": (
+            "La fonction {name} a une complexite cyclomatique de {score} "
+            "(seuil : {threshold}). Elle contient trop de chemins d'execution pour etre "
+            "testee et relue facilement."
+        ),
+        "en": (
+            "Function {name} has a cyclomatic complexity of {score} (threshold: {threshold}). "
+            "It has too many execution paths to be tested and reviewed comfortably."
+        ),
+    },
+    "scan.quality.no_tests.title": {
+        "fr": "Aucun fichier de test detecte",
+        "en": "No test file found",
+    },
+    "scan.quality.no_tests.description": {
+        "fr": (
+            "{count} fichier(s) source detecte(s) et aucun test : aucune regression ne peut "
+            "etre detectee automatiquement."
+        ),
+        "en": (
+            "{count} source file(s) found and no test at all: no regression can be caught "
+            "automatically."
+        ),
+    },
+    "scan.quality.no_ci.title": {
+        "fr": "Aucune integration continue configuree",
+        "en": "No continuous integration configured",
+    },
+    "scan.quality.no_ci.description": {
+        "fr": (
+            "Aucun workflow CI detecte (GitHub Actions, GitLab CI, Jenkins...). Les tests et "
+            "les linters ne tournent donc pas automatiquement sur les commits."
+        ),
+        "en": (
+            "No CI workflow found (GitHub Actions, GitLab CI, Jenkins...). Tests and linters "
+            "therefore never run automatically on commits."
+        ),
+    },
+    "scan.quality.no_lockfile.title": {
+        "fr": "Aucun lockfile pour l'ecosysteme {ecosystem}",
+        "en": "No lockfile for the {ecosystem} ecosystem",
+    },
+    "scan.quality.no_lockfile.description": {
+        "fr": (
+            "Le projet declare des dependances {ecosystem} sans lockfile : deux installations "
+            "peuvent produire des versions differentes."
+        ),
+        "en": (
+            "The project declares {ecosystem} dependencies without a lockfile: two installs can "
+            "resolve to different versions."
+        ),
+    },
+    "scan.quality.pinned_without_lockfile.title": {
+        "fr": "Dependances epinglees, mais sans lockfile",
+        "en": "Dependencies pinned, but no lockfile",
+    },
+    "scan.quality.pinned_without_lockfile.description": {
+        "fr": (
+            "Les dependances directes sont epinglees, ce qui est deja solide. Il manque "
+            "toutefois un vrai lockfile : les dependances transitives ne sont pas figees et "
+            "aucun hash ne verifie l'integrite des paquets telecharges."
+        ),
+        "en": (
+            "Direct dependencies are pinned, which is already solid. A real lockfile is still "
+            "missing though: transitive dependencies are not frozen and no hash verifies the "
+            "integrity of the downloaded packages."
+        ),
+    },
+    "scan.quality.unpinned.title": {
+        "fr": "Dependances non epinglees",
+        "en": "Unpinned dependencies",
+    },
+    "scan.quality.unpinned.description": {
+        "fr": (
+            "Seulement {pinned} dependance(s) sur {total} sont epinglees a une version precise "
+            "dans requirements.txt. Les builds ne sont pas reproductibles."
+        ),
+        "en": (
+            "Only {pinned} out of {total} dependencies are pinned to an exact version in "
+            "requirements.txt. Builds are not reproducible."
+        ),
+    },
+
+    "scan.docs.broken_link.title": {
+        "fr": "Lien mort dans la documentation : {target}",
+        "en": "Dead link in the documentation: {target}",
+    },
+    "scan.docs.broken_link.description": {
+        "fr": "Ligne {line} : le lien pointe vers {target}, qui n'existe pas dans le depot.",
+        "en": "Line {line}: the link points to {target}, which does not exist in the repository.",
+    },
+    "scan.docs.undocumented_env.title": {
+        "fr": "Variable d'environnement non documentee : {name}",
+        "en": "Undocumented environment variable: {name}",
+    },
+    "scan.docs.undocumented_env.description": {
+        "fr": (
+            "Le code lit {name} (premiere utilisation ligne {line}) mais cette variable "
+            "n'apparait ni dans un fichier d'exemple ni dans la documentation."
+        ),
+        "en": (
+            "The code reads {name} (first use at line {line}) but this variable appears neither "
+            "in an example file nor in the documentation."
+        ),
+    },
+    "scan.docs.unused_env.title": {
+        "fr": "Variable d'environnement declaree mais inutilisee : {name}",
+        "en": "Environment variable declared but unused: {name}",
+    },
+    "scan.docs.unused_env.description": {
+        "fr": (
+            "{name} est declaree dans un fichier d'exemple mais n'est lue nulle part dans le "
+            "code : documentation obsolete ou variable oubliee."
+        ),
+        "en": (
+            "{name} is declared in an example file but is never read anywhere in the code: "
+            "stale documentation or a leftover variable."
+        ),
+    },
+    "scan.docs.no_env_example.title": {
+        "fr": "Aucun fichier d'exemple pour les variables d'environnement",
+        "en": "No example file for environment variables",
+    },
+    "scan.docs.no_env_example.description": {
+        "fr": (
+            "Le code lit {count} variable(s) d'environnement mais le depot ne contient aucun "
+            ".env.example : impossible de savoir quoi configurer pour demarrer le projet."
+        ),
+        "en": (
+            "The code reads {count} environment variable(s) but the repository has no "
+            ".env.example: there is no way to know what to configure to start the project."
+        ),
+    },
+
     "recommendation.regex_secrets": {
         "fr": (
             "Scan automatique : {count} secret(s) detecte(s) par pattern matching "
