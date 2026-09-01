@@ -68,6 +68,16 @@ const en = {
     takingLonger: 'This repository is large: the analysis will take longer than usual. You can leave this page, it keeps running on the server.',
   },
 
+  demo: {
+    title: 'Demo — real scan of facebook/react',
+    note: 'This report is a genuine scan of the public facebook/react repository. Connect your account to scan your own.',
+    sortedNote: 'Real detections; the AI verdicts shown here are illustrative.',
+    showSorted: 'See the AI triage',
+    showRaw: 'Back to the scan alone',
+    failed: 'The demo could not be loaded.',
+    cta: 'See a sample report',
+  },
+
   apiErrors: {
     unauthorized: 'Your session has expired, please sign in again.',
     validation_error: 'The request is invalid.',

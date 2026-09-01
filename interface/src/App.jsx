@@ -3,6 +3,7 @@ import ErrorBoundary from '@core/components/ErrorBoundary'
 import ErrorState from '@core/components/ErrorState'
 import Spinner from '@core/components/Spinner'
 import NotFoundPage from '@core/pages/NotFoundPage'
+import DemoPage from '@features/report/presentation/pages/DemoPage'
 import PrivacyPage from '@core/pages/PrivacyPage'
 import TermsPage from '@core/pages/TermsPage'
 import LanguageProvider from '@core/translation/LanguageProvider'
@@ -71,7 +72,8 @@ function AppRoutes() {
         <Routes>
           <Route path="/" element={<LandingRoute />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/demo" element={<DemoPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
 
           <Route element={<SessionGate><AppShell /></SessionGate>}>

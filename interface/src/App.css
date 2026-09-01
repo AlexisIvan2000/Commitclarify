@@ -1836,3 +1836,63 @@
   border-radius: var(--radius);
   animation: riseIn var(--motion-normal) var(--ease-out) both;
 }
+
+.home-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.home-demo {
+  text-decoration: none;
+  font-size: 14px;
+  padding: 0.55rem 1rem;
+}
+
+.demo-page {
+  min-height: 100vh;
+  background: var(--paper);
+}
+
+.demo-banner {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 1.5rem;
+  color: var(--ink-muted);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.demo-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 220px;
+}
+
+.demo-banner-text strong { font-size: 13px; font-weight: 600; color: var(--ink); }
+.demo-banner-text span { font-size: 12px; color: var(--ink-faint); }
+
+.demo-back {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+
+.demo-body {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+@media (max-width: 640px) {
+  .demo-banner { padding: 0.6rem 1rem; }
+  .demo-body { padding: 1.25rem 1rem 3rem; }
+}

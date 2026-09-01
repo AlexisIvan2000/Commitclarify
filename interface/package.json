@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint . && node scripts/check-translations.mjs",
+    "lint": "eslint . && node scripts/check-translations.mjs && node scripts/check-demo.mjs",
     "lint:i18n": "node scripts/check-translations.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "demo:build": "node scripts/build-demo-fixture.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

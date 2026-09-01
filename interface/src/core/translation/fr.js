@@ -68,6 +68,16 @@ const fr = {
     takingLonger: 'Ce dépôt est volumineux : l’analyse prendra plus de temps que d’habitude. Vous pouvez quitter cette page, elle continue sur le serveur.',
   },
 
+  demo: {
+    title: 'Démonstration — scan réel de facebook/react',
+    note: 'Ce rapport est un scan authentique du dépôt public facebook/react. Connectez votre compte pour scanner les vôtres.',
+    sortedNote: 'Détections réelles ; les verdicts de l’IA sont ici illustratifs.',
+    showSorted: 'Voir le tri par l’IA',
+    showRaw: 'Revenir au scan seul',
+    failed: 'La démonstration n’a pas pu être chargée.',
+    cta: 'Voir un rapport d’exemple',
+  },
+
   apiErrors: {
     unauthorized: 'Votre session a expiré, reconnectez-vous.',
     validation_error: 'La requête est invalide.',
