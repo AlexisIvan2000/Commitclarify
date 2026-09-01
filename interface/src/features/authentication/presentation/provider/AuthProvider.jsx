@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { messageOf } from '@core/network/errors'
-import { clearTokens, getRefreshToken, hasSession } from '@core/network/tokenStorage'
+import { clearTokens, getAccessToken, getRefreshToken, hasSession } from '@core/network/tokenStorage'
 import { deleteAccount, fetchCurrentUser, revokeSession } from '../../data/authApi'
 import { SESSION_STATUS, shouldEndSession } from '../../domain/session'
 import { AuthContext } from './authContext'
@@ -21,9 +21,11 @@ function AuthProvider({ children }) {
   }, [])
 
   useEffect(() => {
-    if (!hasSession()) return undefined
+    const probed = getAccessToken()
+    if (!probed) return undefined
 
     let cancelled = false
+    const stillProbedSession = () => !cancelled && getAccessToken() === probed
 
     fetchCurrentUser()
       .then((currentUser) => {
@@ -33,7 +35,7 @@ function AuthProvider({ children }) {
         setStatus(SESSION_STATUS.authenticated)
       })
       .catch((caught) => {
-        if (cancelled) return
+        if (!stillProbedSession()) return
         if (shouldEndSession(caught)) {
           endSession()
           return
