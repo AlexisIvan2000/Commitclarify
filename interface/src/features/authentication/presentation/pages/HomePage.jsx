@@ -31,7 +31,7 @@ function HomePage() {
           <div className="home-actions">
             <GithubLoginButton />
             <Link to="/demo" className="btn home-demo">
-              <Icons.report size={15} variant="Linear" /> {t.demo.cta}
+              <Icons.report size={20} variant="Linear" /> {t.demo.cta}
             </Link>
           </div>
         </div>

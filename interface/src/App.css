@@ -1839,17 +1839,27 @@
 
 .home-actions {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   gap: 0.7rem;
   flex-wrap: wrap;
+  margin-top: 0.4rem;
 }
 
-.home-demo {
-  text-decoration: none;
-  font-size: 14px;
-  padding: 0.55rem 1rem;
+.home-actions > * {
+  flex: 1 1 15rem;
+  max-width: 20rem;
+  min-height: 46px;
+  margin-top: 0;
+  padding: 0.7rem 1.5rem;
+  gap: 0.6rem;
+  font-size: 14.5px;
+  font-weight: 500;
+  justify-content: center;
+  white-space: nowrap;
 }
+
+.home-demo { text-decoration: none; }
 
 .demo-page {
   min-height: 100vh;
@@ -1895,4 +1905,11 @@
 @media (max-width: 640px) {
   .demo-banner { padding: 0.6rem 1rem; }
   .demo-body { padding: 1.25rem 1rem 3rem; }
+}
+
+@media (max-width: 640px) {
+  .home-actions > * {
+    flex-basis: 100%;
+    max-width: none;
+  }
 }

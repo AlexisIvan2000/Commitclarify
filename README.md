@@ -1,107 +1,139 @@
 # CommitClarify
 
-Automated analysis of GitHub repositories. CommitClarify fetches a repository's code, indexes it into a vector store, then runs four analysis agents that combine deterministic linters with an LLM to produce an exportable report.
+A developer connects their GitHub account, picks a repository, and within a minute gets a
+report telling them what is actually exposed or neglected in their code: secrets committed
+to history, files that should have been ignored, quality debt, documentation that no longer
+matches the code.
 
-The interface and the reports are available **in French and English**.
+It is not a full security audit. It answers one question: **did I leave something
+compromising in this repository, and what should I fix first?**
+
+The interface and the reports are available in French and English.
+
+**See a sample report** at `/demo`, without connecting an account. It is a real scan of the
+public `facebook/react` repository.
 
 ---
 
 ## Contents
 
-- [What it analyzes](#what-it-analyzes)
-- [Architecture](#architecture)
+- [How it works](#how-it-works)
+- [What it looks for](#what-it-looks-for)
+- [Honest reporting](#honest-reporting)
+- [The backend in short](#the-backend-in-short)
+- [The frontend in short](#the-frontend-in-short)
 - [Tech stack](#tech-stack)
 - [Setup](#setup)
-- [Running the project](#running-the-project)
-- [Tests and quality](#tests-and-quality)
-- [API](#api)
-- [How it works](#how-it-works)
-- [Deployment](#deployment)
-- [Known limitations](#known-limitations)
+- [Limits](#limits)
 
 ---
 
-## What it analyzes
+## How it works
 
-Four agents run in parallel against every repository:
+The product does two distinct things, in this order, and the distinction matters.
 
-| Agent | What it looks for | Method |
-|---|---|---|
-| **Secret detection** | API keys, tokens, passwords, private keys, committed sensitive files (`.env`, `id_rsa`, `*.pem`…) | Filename scan + regex + LLM |
-| **.gitignore check** | Sensitive files not excluded from the repository | LLM over the actual `.gitignore` |
-| **Code quality** | Unused imports, complexity, duplicated code, dead logic | Ruff + ESLint + LLM |
-| **README vs Code** | Documented features that don't exist, wrong install instructions | Comparative LLM pass |
+**1. The scan.** Deterministic, free, no LLM involved. It fetches the repository files and
+applies fixed rules across four axes. Same repository at the same commit, same result. This
+is the product; most users never go further.
 
-Findings from the linters and the filename scan are **deterministic**: they don't depend on the LLM and are therefore reproducible. The LLM only handles what static tooling cannot.
+**2. The AI triage.** Optional, a few per day. The model re-reads the detections the scan
+already made, dismisses the ones that are not real risks, explains the rest. On the two
+closed axes it cannot add a detection of its own, only judge existing ones.
 
-Every report can be read in the app and exported as **PDF** or **JSON**.
+A report without AI triage is the normal, finished state. Nothing in the interface treats
+it as an unfinished step.
+
+The scan is carried by the server, not by the browser tab. Closing the page, navigating
+away or reloading does not stop it, and coming back reattaches to the run in progress.
 
 ---
 
-## Architecture
+## What it looks for
 
-The repository holds two independent applications.
+| Axis | What it looks for |
+|---|---|
+| **Secret detection** | API keys, tokens, private keys, connection strings in versioned files |
+| **.gitignore check** | Files tracked by Git that should not be, and missing rules |
+| **Code quality** | Linter findings, over complex functions, missing lockfile, CI or tests |
+| **README vs Code** | Environment variables the code reads but that are documented nowhere |
 
-```
-CommitClarify/
-├── server/      FastAPI API
-└── interface/   React SPA
-```
+Findings carry one of five severities, from critical to information, and a real world
+nuance the tool insists on: a secret found in a test file keeps its severity and stays in
+the list, but is badged as a test file. On the reference scan, all six secret detections
+are test fixtures. Hiding that would make the report either alarmist or dishonest.
 
-### Backend — layered
+Reports export to PDF and JSON.
 
-```
-server/
-├── api/                 HTTP layer: routers, dependencies, middlewares
-│   ├── routers/         auth · analysis · repos
-│   ├── dependencies.py  current-user resolution
-│   └── middlewares/     JWT
-├── services/            Business logic
-│   ├── ai/              agents, prompts, linters (ruff, eslint)
-│   ├── analysis/        SSE pipeline, quotas
-│   ├── authentication/  OAuth, tokens, account deletion
-│   ├── export/          PDF, JSON serialization
-│   ├── github/          file fetching
-│   └── rag/             chunking, embeddings, Chroma indexing
-├── repositories/        Database access (no SQL lives anywhere else)
-├── models/
-│   ├── db/              SQLAlchemy tables (user · token · analysis)
-│   ├── schemas/         Pydantic contracts (auth · analysis)
-│   └── data/            extensions.json
-├── core/                Infrastructure: config, database, exceptions,
-│                        clock, security, language, rate_limit, schema
-├── migrations/          Alembic
-└── tests/               unit/ · integration/
-```
+---
 
-Dependencies flow one way: `api → services → repositories → models`, and `core` depends on nothing. **No SQL query lives outside `repositories/`**, and no service knows about HTTP — domain errors bubble up through an `AppError` hierarchy that a global handler turns into responses.
+## Honest reporting
 
-> **Runs on a single worker.** `services/analysis/runs.py` keeps the live scan registry in memory, and that registry alone carries three guarantees: resuming a stream after a disconnect, the one-concurrent-scan-per-user limit, and orphan detection (an analysis stuck at `scanning` with no live run is relaunchable). All three break silently under several workers — a user could start two scans, and a client reconnecting to another worker would find nothing and relaunch it. Moving past one worker means moving the registry to a shared Redis (pub/sub for the SSE stream, TTL keys for concurrency).
+Three product rules that shape most of the interface.
 
-### Frontend — feature-first
+**Partial coverage is read per axis, never globally.** Large repositories are not fully
+read: the scan caps at 500 files. When that happens an axis says "nothing on the analyzed
+part" instead of "nothing to report", and the difference carries the credibility of the
+whole product. On `facebook/react`, the secrets axis says exactly that while the .gitignore
+axis reports two critical findings, in the same report.
 
-```
-interface/src/
-├── core/                Shared across every feature
-│   ├── network/         HTTP client, token storage, typed errors
-│   ├── translation/     fr/en catalogs, provider, language detection
-│   ├── design/          CSS tokens, semantic icon map
-│   ├── components/      Sidebar, Spinner, ErrorState, EmptyState, PageHeader…
-│   ├── pages/           404, legal pages
-│   └── utils/           dates, downloads
-└── features/
-    ├── authentication/  OAuth, session, account
-    ├── repositories/    repository list and filters
-    ├── scan/            starting and following analyses, quota
-    ├── report/          report, exports, AI deepening
-    └── history/         past analyses
-```
+**Coverage figures name what was skipped, and why.** Not a percentage. Of the 7199 files
+tracked in that repository, 4394 were out of scope by construction (excluded paths, binary
+extensions, oversized files) and 2309 were analyzable but went unread because the scan stops
+at 500. Only the second number is a blind spot, and it is the product's limit, not the
+repository's.
 
-Each feature follows the same split: `data/` (API calls), `domain/` (rules and normalization), `presentation/` (pages, components, providers). `core` never depends on a feature, and `scan` owns the analysis vocabulary the other features import.
+**Nothing the AI dismisses is deleted.** Dismissed detections move into a collapsed group,
+keep their original severity next to the demoted one, and stay readable with the reason. The
+user has to be able to disagree with the model.
 
-> **Analysis following lives above the pages.** `RunsProvider` is mounted in `AppShell`, so an analysis keeps being followed while the user navigates elsewhere, and a page reload finds it again through `GET /analyze/active`. A page never starts an analysis without going through the provider.
+---
 
-> **Error messages are localized by code, never by text.** The server answers in English with a `code` and `params`; the front looks up `apiErrors[code]` and interpolates (`{seconds}`, `{limit}`). Adding a server-side code means adding its entry to `fr.js` and `en.js` — `npm run lint` fails otherwise.
+## The backend in short
+
+FastAPI, PostgreSQL, deployed on Railway. Full detail in [`server/README.md`](server/README.md).
+
+**Authentication** is GitHub OAuth with a state cookie against CSRF, then a short lived
+single use auth code so no token ever travels in a URL. Access tokens are JWTs, refresh
+tokens are stored only as hashes, and the user's GitHub token is encrypted with Fernet and
+decrypted only when a scan needs it.
+
+**The database** holds users, their refresh tokens and auth codes, their analyses and one
+result row per axis. Two tables stand apart: a scan cache keyed by repository, commit, rule
+version and language, shared across users, and a quota ledger with reserved and committed
+states, so a crashed AI run releases its slot instead of consuming it.
+
+**A scan is not an HTTP response.** It runs as a background task that publishes events into
+a buffer, and the server sent events endpoint is only a subscriber that replays and follows.
+That is why disconnecting does not kill it and reconnecting catches up.
+
+**Two limits.** A technical throttle nobody should ever hit, protecting CPU, bandwidth and
+the user's own GitHub rate limit, where a cache hit costs nothing. And a product quota of a
+few AI triages per day.
+
+377 tests, unit and integration.
+
+---
+
+## The frontend in short
+
+React 19, Vite, no state management or data fetching library. Full detail in
+[`interface/README.md`](interface/README.md).
+
+**Following an analysis lives above the pages**, in a provider mounted in the shell. That
+one decision is what makes navigation, reload, concurrency blocking, the completion notice
+and the slow warning all work, instead of five separate features.
+
+**Detections are grouped by rule and file**, which takes the busiest axis from 21 entries to
+12, and low severity ones fold into a chip that still shows how many are behind it. The
+mechanism only activates on the axis that needs it; the other three render identically with
+or without it.
+
+**Error messages are localized by code, never by text.** The server answers in English with
+a stable code and parameters, and the interface resolves it against its catalogs. A build
+check fails when a key exists in one language and not the other.
+
+The report component is shared by the report page, the live scan and the public demo, so the
+demo cannot drift from the product.
 
 ---
 
@@ -111,27 +143,20 @@ Each feature follows the same split: `data/` (API calls), `domain/` (rules and n
 
 | Area | Choice |
 |---|---|
-| API | FastAPI 0.135 · Uvicorn |
-| Database | PostgreSQL · SQLAlchemy 2.0 (async, asyncpg) · Alembic |
-| Vector store | ChromaDB 1.5 (persistent) |
-| Embeddings | sentence-transformers `all-MiniLM-L6-v2` — runs **locally**, no third-party call (`EMBEDDING_MODEL` overrides) |
+| API | FastAPI, Uvicorn |
+| Database | PostgreSQL, SQLAlchemy 2.0 async with asyncpg, Alembic |
+| Vector store | ChromaDB, persistent |
+| Embeddings | sentence-transformers `all-MiniLM-L6-v2`, runs locally, no third party call |
 | LLM | OpenAI `gpt-4o-mini` |
 | Splitting | LangChain `RecursiveCharacterTextSplitter` |
-| Linters | Ruff · ESLint 9 (run as subprocesses) |
+| Linters | Ruff and ESLint 9, run as subprocesses |
 | Export | ReportLab |
-| Security | JWT (python-jose) · Fernet · SlowAPI (per-IP, on auth and repo routes) · per-user scan throttle |
+| Security | JWT, Fernet, SlowAPI per IP on the auth and repository routes, a per user scan throttle |
 
 **Frontend**
 
-React 19 · Vite 7 · React Router 7 · iconsax-react · highlight.js — no state-management or data-fetching library; the network layer is hand-rolled.
-
-**Size**
-
-| | Files | Lines |
-|---|---|---|
-| Backend (excluding tests) | 56 | 3,881 |
-| Frontend | 59 | 2,768 |
-| Tests | 19 | 1,468 |
+React 19, Vite 7, React Router 7, iconsax-react, highlight.js. The network layer is hand
+rolled.
 
 ---
 
@@ -140,8 +165,8 @@ React 19 · Vite 7 · React Router 7 · iconsax-react · highlight.js — no sta
 ### Prerequisites
 
 - Python 3.13
-- Node.js 20+
-- PostgreSQL (or SQLite for a quick local run)
+- Node.js 20 or later
+- PostgreSQL
 - A [GitHub OAuth App](https://github.com/settings/developers)
 - An OpenAI API key
 
@@ -150,173 +175,60 @@ React 19 · Vite 7 · React Router 7 · iconsax-react · highlight.js — no sta
 ```bash
 cd server
 python -m venv .venv
-.venv\Scripts\activate        # Windows
-source .venv/bin/activate     # macOS / Linux
+.venv/Scripts/activate        # Windows
+source .venv/bin/activate     # macOS, Linux
 
 pip install -r requirements.txt
-npm install                   # installs ESLint, used by the quality agent
-cp .env.example .env
+npm install                   # ESLint, used by the quality scan
+cp .env.example .env          # then fill it in
+
+alembic upgrade head
+uvicorn app:app --reload
 ```
 
-> `npm install` inside `server/` is not optional: without it the JavaScript analysis silently switches off — it logs an error and reports no issue at all.
-
-Fill in `.env`:
-
-| Variable | Required | Default | Purpose |
-|---|:---:|---|---|
-| `DB_URL` | ✅ | — | PostgreSQL URL (`postgresql://…`, converted to asyncpg) |
-| `JWT_SECRET` | ✅ | — | Access-token signing |
-| `GITHUB_CLIENT_ID` | ✅ | — | GitHub OAuth App |
-| `GITHUB_CLIENT_SECRET` | ✅ | — | GitHub OAuth App |
-| `GITHUB_CALLBACK_URL` | ✅ | — | Must match the OAuth App |
-| `FERNET_KEY` | ✅ | — | Encrypts stored GitHub tokens |
-| `OPENAI_API_KEY` | ✅ | — | LLM agents |
-| `FRONTEND_URL` | ✅ | — | CORS origin and OAuth redirect target |
-| `JWT_ALGORITHM` | | `HS256` | |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | | `30` | |
-| `REFRESH_TOKEN_EXPIRE_DAYS` | | `30` | |
-| `DAILY_ANALYSIS_LIMIT` | | `3` | Analyses per user per day |
-
-The app refuses to boot if a required variable is missing, and tells you which ones.
-
-Generate a Fernet key:
-
-```bash
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-```
+The service refuses to start when a required setting is missing, listing all of them at
+once rather than failing on the first use. Every variable is documented in
+[`server/README.md`](server/README.md).
 
 ### Frontend
 
 ```bash
 cd interface
 npm install
-echo 'VITE_API_URL="http://localhost:8000"' > .env
+npm run dev
 ```
 
----
-
-## Running the project
+### Checks
 
 ```bash
-# Terminal 1
-cd server && uvicorn app:app --reload
-
-# Terminal 2
-cd interface && npm run dev
+cd server && pytest           # 377 tests
+cd interface && npm run lint  # ESLint, translation parity, demo render check
 ```
-
-The interface listens on `http://localhost:5173`, the API on `http://localhost:8000`. Interactive docs at `/docs`.
-
-The database schema is applied on startup: if the database already holds tables but no Alembic history, it is stamped at the baseline revision and then migrated — no manual command required.
 
 ---
 
-## Tests and quality
+## Limits
 
-```bash
-cd server
-pytest                   # 137 tests
-pytest tests/unit        # 91 — no database, no HTTP
-pytest tests/integration # 46 — HTTP client + in-memory SQLite
-ruff check .
-```
+Worth knowing before relying on it.
 
-```bash
-cd interface
-npm run lint             # ESLint + translation parity check
-npm run build
-```
+**500 files per repository.** Beyond that the scan reads a subset and says so. It never
+pretends to have read everything.
 
-The unit tests run Ruff and ESLint **for real** against deliberately broken code — no mocks — so that a broken tool surfaces as a failure instead of being mistaken for "nothing found".
+**One worker.** The live run registry lives in memory, and it alone carries stream resume,
+the one concurrent run per user limit, and orphan detection. All three break silently under
+several workers. Scaling out means moving that registry into a shared Redis.
 
-`npm run lint` also compares the `fr` and `en` catalogs key by key and fails on any drift.
+**The AI triage is bounded by design.** On the two closed axes the model can only judge
+existing detections, never invent one. On the two open axes, findings pointing at files that
+do not exist are rejected before they reach the report.
 
----
+**Embeddings run on CPU.** Indexing a large repository takes tens of seconds. The model
+choice is deliberate: a heavier one measured seventeen times slower, for a retrieval quality
+difference that does not show given only fifteen fragments are read per query. A feature
+that takes twelve minutes is not used, so its theoretical quality is worth nothing.
 
-## API
+**Source code is never stored.** It is fetched into memory for the duration of a scan. What
+persists is the report and, for the AI phase, a vector index tied to the commit.
 
-Every route requires `Authorization: Bearer <access_token>`, except `/`, `/health`, `/docs`, `/redoc`, `/openapi.json`, `/auth/github/login`, `/auth/callback` and `/auth/exchange`.
-
-| Method | Route | Description |
-|---|---|---|
-| `GET` | `/` | Health check |
-| `GET` | `/auth/github/login` | Redirects to GitHub, sets the `state` cookie |
-| `GET` | `/auth/callback` | GitHub return, redirects with a single-use code |
-| `POST` | `/auth/exchange` | Trades the code for tokens |
-| `POST` | `/auth/refresh` | Rotates the token pair |
-| `POST` | `/auth/logout` | Revokes the refresh token |
-| `GET` | `/auth/me` | Current profile |
-| `DELETE` | `/auth/account` | Deletes the account and every related record |
-| `GET` | `/repos/` | The user's GitHub repositories |
-| `POST` | `/analyze/{owner}/{repo}?language=fr\|en` | Creates an analysis, consumes one quota unit |
-| `GET` | `/analyze/{id}/stream` | SSE progress stream |
-| `GET` | `/analyze/{id}` | Full report |
-| `DELETE` | `/analyze/{id}` | Deletes one analysis |
-| `GET` | `/analyze/history` | History |
-| `DELETE` | `/analyze/history/all` | Clears the history |
-| `GET` | `/analyze/quota` | Today's quota |
-| `GET` | `/analyze/{id}/export/pdf` | PDF export |
-| `GET` | `/analyze/{id}/export/json` | JSON export |
-
-Errors return `{"detail": "...", "code": "..."}`. The `code` is stable (`quota_exceeded`, `analysis_running`, `analysis_finished`…) so the client can translate the message instead of displaying the server's own wording.
-
----
-
-## How it works
-
-### Authentication
-
-1. `/auth/github/login` generates a `state` nonce, stores it in an `HttpOnly` cookie and redirects to GitHub.
-2. The callback rejects the request if the `state` doesn't match (double-submit CSRF protection).
-3. Rather than returning JWTs in the URL, the server issues a **single-use code** (120 s lifetime, stored hashed) that the frontend exchanges for tokens through `POST /auth/exchange`.
-4. The GitHub token is encrypted with Fernet before being stored.
-
-### Analysis pipeline
-
-`POST /analyze/{owner}/{repo}` consumes the quota and creates the analysis in `pending`. The SSE stream then drives it through:
-
-```
-fetching → indexing → analyzing → done
-```
-
-An analysis can only run if it is `pending`, or `processing` for more than 15 minutes (recovery after a dropped connection). Anything else returns `409` — which prevents replaying a finished analysis to bypass the quota.
-
-### File filtering
-
-Driven by `models/data/extensions.json`: 100 extensions across 7 groups, 87 explicit filenames, 62 excluded directories.
-
-| Limit | Value |
-|---|---|
-| Max file size | 100 KB |
-| Max lines per file | 2,000 |
-| Max files per repository | 500 |
-| Batch size | 20 |
-
-### Vector indexing
-
-Chunking adapts to the file type (code 1,500 characters, config 1,000, docs 800). Chroma collections are named after `user + repository + commit SHA`, so re-analyzing an unchanged repository reuses the existing index. Files are still re-downloaded every time, so that linters and regex scans produce the same results as a fresh run.
-
-Embeddings are computed locally — no code is sent to a third-party embedding service. Only excerpts reach the OpenAI API, for the semantic pass.
-
-### Report language
-
-The language is chosen **at launch** and stored on the analysis, because a generated report is frozen: findings are persisted in the database as plain text. Switching the interface language therefore does not retranslate an existing report. Deterministic labels (linter rules, sensitive files) are translated server-side from a catalog, and every finding carries a stable rule identifier.
-
----
-
-## Deployment
-
-**Backend — Railway.** A `Procfile` (`uvicorn app:app --host 0.0.0.0 --port $PORT`) plus `nixpacks.toml`, which adds Node.js 20 and runs `npm install` so ESLint is available in production. Migrations run on startup.
-
-**Frontend — Vercel.** `vercel.json` rewrites every route to `index.html` (required for client-side routing). Set `VITE_API_URL` to the API URL.
-
-After deploying the frontend, make sure the backend is up to date: FastAPI silently ignores unknown query parameters, which can make a feature look broken when in fact only the API is lagging behind.
-
----
-
-## Known limitations
-
-- Tokens are kept in `localStorage`, so they are exposed to XSS. Moving to `HttpOnly` cookies would require server-side changes.
-- Refreshing the page during an analysis starts a new one and consumes another quota unit; the previous one stays in `processing` until the recovery delay expires.
-- A failed analysis still consumes a quota unit, with no refund.
-- The metadata in `index.html` (description, Open Graph) stays in French: it is served before React boots.
+**It is not a security audit.** No dependency CVE scanning, no dynamic analysis, no secret
+rotation. It answers one narrow question, and tries to answer it honestly.
