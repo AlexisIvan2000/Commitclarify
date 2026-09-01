@@ -51,6 +51,25 @@ async def list_analyses(
     return await analysis_repo.list_for_user(current_user.id, db)
 
 
+@router.get("/active")
+async def active_run(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    run = runs.active_for(current_user.id)
+
+    if run is None:
+        return None
+
+    analysis = await analysis_repo.get_owned(run.analysis_id, current_user.id, db)
+
+    return {
+        "analysis_id": str(run.analysis_id),
+        "kind": run.phase,
+        "repo_name": analysis.repo_name if analysis else None,
+    }
+
+
 @router.delete("/history/all")
 async def delete_all_analyses(
     current_user: User = Depends(get_current_user),

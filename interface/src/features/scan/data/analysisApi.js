@@ -13,6 +13,10 @@ export function openDeepenStream(analysisId, options) {
   return openEventStream(`/analyze/${analysisId}/deepen/stream`, options)
 }
 
+export function fetchActiveRun() {
+  return requestJson('/analyze/active')
+}
+
 export function fetchHistory() {
   return requestJson('/analyze/history')
 }

@@ -4,12 +4,13 @@ from collections.abc import Callable
 import chromadb
 from chromadb.config import Settings
 
+from core.config import CHROMA_PATH
 from services.rag.embeddings import get_embeddings_batch, model_tag
 
 logger = logging.getLogger(__name__)
 
 chroma_client = chromadb.PersistentClient(
-    path="./chroma_db",
+    path=CHROMA_PATH,
     settings=Settings(anonymized_telemetry=False),
 )
 

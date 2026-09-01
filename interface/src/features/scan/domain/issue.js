@@ -94,3 +94,51 @@ export function splitByVerdict(issues) {
 export function verdictLabel(verdict) {
   return getStrings().analysis.verdictLabels[verdict] || null
 }
+
+export const MAIN_SEVERITIES = new Set(['critical', 'high', 'medium'])
+export const FOLDED_SEVERITIES = ['low', 'info']
+
+const GROUP_SEPARATOR = '␟'
+
+function groupKey(issue) {
+  return `${issue.rule || issue.title}${GROUP_SEPARATOR}${issue.filePath || ''}`
+}
+
+export function groupIssues(issues) {
+  const groups = new Map()
+
+  for (const issue of issues) {
+    const key = groupKey(issue)
+    const existing = groups.get(key)
+
+    if (!existing) {
+      groups.set(key, { ...issue, entries: 1, occurrences: issue.occurrences, lines: [...issue.lines] })
+      continue
+    }
+
+    existing.entries += 1
+    existing.occurrences += issue.occurrences
+    existing.lines = [...existing.lines, ...issue.lines]
+  }
+
+  return [...groups.values()].sort(
+    (a, b) => severityRank(a.severity) - severityRank(b.severity),
+  )
+}
+
+export function foldBySeverity(entries) {
+  const main = entries.filter(entry => MAIN_SEVERITIES.has(entry.severity))
+
+  const folded = FOLDED_SEVERITIES
+    .map(severity => ({
+      severity,
+      entries: entries.filter(entry => entry.severity === severity),
+    }))
+    .filter(group => group.entries.length > 0)
+    .map(group => ({
+      ...group,
+      detections: group.entries.reduce((total, entry) => total + entry.occurrences, 0),
+    }))
+
+  return { main, folded }
+}

@@ -115,6 +115,14 @@ def assert_free(user_id: uuid.UUID, phase: str) -> None:
     )
 
 
+def active_for(user_id: uuid.UUID) -> Run | None:
+    for run in _runs.values():
+        if run.alive and run.user_id == user_id:
+            return run
+
+    return None
+
+
 def start(analysis: Analysis, phase: str, source: Source) -> Run:
     live = find(analysis.id, phase)
     if live is not None and live.alive:

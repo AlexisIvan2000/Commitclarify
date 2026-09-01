@@ -40,3 +40,22 @@ export function formatMonthYear(value) {
 
   return date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
 }
+
+const MINUTE = 60
+const HOUR = MINUTE * 60
+const DAY = HOUR * 24
+const MONTH = DAY * 30
+
+export function formatRelative(value, strings) {
+  const date = toDate(value)
+  if (!date) return ''
+
+  const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000))
+
+  if (seconds < MINUTE) return strings.justNow
+  if (seconds < HOUR) return strings.minutes.replace('{count}', Math.floor(seconds / MINUTE))
+  if (seconds < DAY) return strings.hours.replace('{count}', Math.floor(seconds / HOUR))
+  if (seconds < MONTH) return strings.days.replace('{count}', Math.floor(seconds / DAY))
+
+  return strings.months.replace('{count}', Math.floor(seconds / MONTH))
+}

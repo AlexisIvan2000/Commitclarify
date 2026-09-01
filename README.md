@@ -85,15 +85,23 @@ interface/src/
 ├── core/                Shared across every feature
 │   ├── network/         HTTP client, token storage, typed errors
 │   ├── translation/     fr/en catalogs, provider, language detection
-│   ├── components/      Navbar, Spinner, ErrorState, ErrorBoundary…
+│   ├── design/          CSS tokens, semantic icon map
+│   ├── components/      Sidebar, Spinner, ErrorState, EmptyState, PageHeader…
 │   ├── pages/           404, legal pages
-│   └── utils/           dates, downloads, shared hooks
+│   └── utils/           dates, downloads
 └── features/
-    ├── authentication/  data/ · domain/ · presentation/
-    └── analysis/        data/ · domain/ · presentation/
+    ├── authentication/  OAuth, session, account
+    ├── repositories/    repository list and filters
+    ├── scan/            starting and following analyses, quota
+    ├── report/          report, exports, AI deepening
+    └── history/         past analyses
 ```
 
-Each feature follows the same split: `data/` (API calls), `domain/` (rules and normalization), `presentation/` (pages, components, providers). `core` never depends on a feature.
+Each feature follows the same split: `data/` (API calls), `domain/` (rules and normalization), `presentation/` (pages, components, providers). `core` never depends on a feature, and `scan` owns the analysis vocabulary the other features import.
+
+> **Analysis following lives above the pages.** `RunsProvider` is mounted in `AppShell`, so an analysis keeps being followed while the user navigates elsewhere, and a page reload finds it again through `GET /analyze/active`. A page never starts an analysis without going through the provider.
+
+> **Error messages are localized by code, never by text.** The server answers in English with a `code` and `params`; the front looks up `apiErrors[code]` and interpolates (`{seconds}`, `{limit}`). Adding a server-side code means adding its entry to `fr.js` and `en.js` — `npm run lint` fails otherwise.
 
 ---
 
@@ -106,16 +114,16 @@ Each feature follows the same split: `data/` (API calls), `domain/` (rules and n
 | API | FastAPI 0.135 · Uvicorn |
 | Database | PostgreSQL · SQLAlchemy 2.0 (async, asyncpg) · Alembic |
 | Vector store | ChromaDB 1.5 (persistent) |
-| Embeddings | sentence-transformers `all-mpnet-base-v2` — runs **locally**, no third-party call |
+| Embeddings | sentence-transformers `all-MiniLM-L6-v2` — runs **locally**, no third-party call (`EMBEDDING_MODEL` overrides) |
 | LLM | OpenAI `gpt-4o-mini` |
 | Splitting | LangChain `RecursiveCharacterTextSplitter` |
 | Linters | Ruff · ESLint 9 (run as subprocesses) |
 | Export | ReportLab |
-| Security | JWT (python-jose) · Fernet · SlowAPI |
+| Security | JWT (python-jose) · Fernet · SlowAPI (per-IP, on auth and repo routes) · per-user scan throttle |
 
 **Frontend**
 
-React 19 · Vite 7 · React Router 7 · lucide-react · highlight.js — no state-management or data-fetching library; the network layer is hand-rolled.
+React 19 · Vite 7 · React Router 7 · iconsax-react · highlight.js — no state-management or data-fetching library; the network layer is hand-rolled.
 
 **Size**
 

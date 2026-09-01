@@ -16,12 +16,12 @@ function AccountPage() {
   const { reportLanguage, setReportLanguage } = useReportLanguage()
   const [error, setError] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [confirming, setConfirming] = useState(false)
 
   if (!user) return <Spinner />
 
   async function handleDeleteAccount() {
-    if (!window.confirm(t.auth.confirmDeleteAccount)) return
-
+    setConfirming(false)
     setError(null)
     setDeleting(true)
     try {
@@ -47,6 +47,8 @@ function AccountPage() {
           <span className="account-login">@{user.login}</span>
         </div>
       </section>
+
+      <div className="account-panels">
 
       <section className="panel">
         <h2 className="panel-title">{t.account.profile}</h2>
@@ -88,12 +90,29 @@ function AccountPage() {
           <button className="btn" onClick={signOut}>
             <Icons.logout size={14} variant="Linear" /> {t.actions.logout}
           </button>
-          <button className="btn btn-danger" onClick={handleDeleteAccount} disabled={deleting}>
-            <Icons.trash size={14} variant="Linear" /> {t.actions.deleteAccount}
-          </button>
+          {!confirming && (
+            <button className="btn btn-danger" onClick={() => setConfirming(true)}>
+              <Icons.trash size={14} variant="Linear" /> {t.actions.deleteAccount}
+            </button>
+          )}
         </div>
+
+        {confirming && (
+          <div className="confirm-inline" role="alertdialog" aria-label={t.auth.confirmDeleteAccount}>
+            <span>{t.auth.confirmDeleteAccount}</span>
+            <div className="panel-actions">
+              <button className="btn btn-danger" onClick={handleDeleteAccount} disabled={deleting}>
+                <Icons.trash size={13} variant="Linear" /> {t.actions.deleteAccount}
+              </button>
+              <button className="btn" onClick={() => setConfirming(false)}>{t.actions.cancel}</button>
+            </div>
+          </div>
+        )}
+
         {error && <p className="panel-error" role="alert">{error}</p>}
       </section>
+
+      </div>
     </>
   )
 }

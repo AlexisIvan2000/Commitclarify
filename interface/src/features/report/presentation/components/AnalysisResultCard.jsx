@@ -1,9 +1,16 @@
 import { useState } from 'react'
 import { Icons } from '@core/design/icons'
 import useTranslation from '@core/translation/useTranslation'
-import { normalizeIssues, normalizeRecommendations, splitByVerdict } from '@features/scan/domain/issue'
+import {
+  foldBySeverity,
+  groupIssues,
+  normalizeIssues,
+  normalizeRecommendations,
+  splitByVerdict,
+} from '@features/scan/domain/issue'
 import { RESULT_ICONS, STEP_ICONS, resultColor, resultLabel, stepLabel } from '@features/scan/domain/steps'
 import CoverageNote from './CoverageNote'
+import FoldedSeverity from './FoldedSeverity'
 import IssueRow from './IssueRow'
 import MetricsPanel from './MetricsPanel'
 
@@ -16,6 +23,8 @@ function AnalysisResultCard({ aspect, result, pending, coverage }) {
   const completed = Boolean(result)
 
   const { retained, dismissed } = splitByVerdict(normalizeIssues(result?.issues))
+  const { main, folded } = foldBySeverity(groupIssues(retained))
+  const groupedDismissed = groupIssues(dismissed)
   const recommendations = normalizeRecommendations(result?.recommendations)
   const DismissedIcon = showDismissed ? Icons.expand : Icons.collapse
 
@@ -49,13 +58,17 @@ function AnalysisResultCard({ aspect, result, pending, coverage }) {
           <p className="result-clean">{result.message || t.analysis.unavailable}</p>
         )}
 
-        {completed && retained.length > 0 && (
+        {completed && main.length > 0 && (
           <ul className="issue-list">
-            {retained.map((issue, index) => (
+            {main.map((issue, index) => (
               <IssueRow key={issue.id || index} issue={issue} />
             ))}
           </ul>
         )}
+
+        {completed && folded.map(group => (
+          <FoldedSeverity key={group.severity} group={group} />
+        ))}
 
         {completed && dismissed.length > 0 && (
           <div className="dismissed-section">
@@ -71,7 +84,7 @@ function AnalysisResultCard({ aspect, result, pending, coverage }) {
               <>
                 <p className="dismissed-hint">{t.analysis.dismissedHint}</p>
                 <ul className="issue-list">
-                  {dismissed.map((issue, index) => (
+                  {groupedDismissed.map((issue, index) => (
                     <IssueRow key={issue.id || index} issue={issue} />
                   ))}
                 </ul>

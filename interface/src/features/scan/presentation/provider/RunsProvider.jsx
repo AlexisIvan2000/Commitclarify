@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { messageOf } from '@core/network/errors'
 import { getStrings } from '@core/translation'
 import {
+  fetchActiveRun,
   openAnalysisStream,
   openDeepenStream,
   startAnalysis,
@@ -35,8 +36,10 @@ function freshRun(kind, analysisId, repoFullName) {
 function RunsProvider({ children }) {
   const [run, setRun] = useState(null)
   const [notice, setNotice] = useState(null)
+  const [ready, setReady] = useState(false)
 
   const inFlight = useRef(false)
+  const rehydrated = useRef(false)
   const connection = useRef(null)
   const slowTimer = useRef(null)
 
@@ -49,6 +52,27 @@ function RunsProvider({ children }) {
     connection.current?.abort()
     if (slowTimer.current) clearTimeout(slowTimer.current)
   }, [])
+
+  useEffect(() => {
+    if (rehydrated.current) return
+    rehydrated.current = true
+
+    let abandoned = false
+
+    fetchActiveRun()
+      .then(active => {
+        if (abandoned || !active) return
+
+        inFlight.current = true
+        setRun(freshRun(active.kind, active.analysis_id, active.repo_name))
+        follow(active.kind, active.analysis_id, active.repo_name)
+          .finally(() => { inFlight.current = false })
+      })
+      .catch(() => {})
+      .finally(() => { if (!abandoned) setReady(true) })
+
+    return () => { abandoned = true }
+  }, [follow])
 
   const follow = useCallback(async (kind, analysisId, repoFullName) => {
     const controller = new AbortController()
@@ -159,12 +183,13 @@ function RunsProvider({ children }) {
   const value = useMemo(() => ({
     run,
     notice,
+    ready,
     busy: run !== null && run.phase === STREAM_PHASES.streaming,
     startScan,
     startDeepen,
     release,
     dismissNotice,
-  }), [run, notice, startScan, startDeepen, release, dismissNotice])
+  }), [run, notice, ready, startScan, startDeepen, release, dismissNotice])
 
   return <RunsContext.Provider value={value}>{children}</RunsContext.Provider>
 }

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import EmptyState from '@core/components/EmptyState'
 import ErrorState from '@core/components/ErrorState'
@@ -14,9 +15,7 @@ function HistoryPage() {
   const navigate = useNavigate()
   const { analyses, loading, error, actionError, reload, remove, removeAll } = useAnalysisHistory()
 
-  function handleRemoveAll() {
-    if (window.confirm(t.analysis.confirmDeleteAll)) removeAll()
-  }
+  const [confirming, setConfirming] = useState(false)
 
   return (
     <>
@@ -24,8 +23,8 @@ function HistoryPage() {
         icon={<Icons.history size={22} variant="Linear" />}
         title={t.analysis.historyTitle}
         count={analyses.length}
-        actions={analyses.length > 0 && (
-          <button className="btn btn-danger" onClick={handleRemoveAll}>
+        actions={analyses.length > 0 && !confirming && (
+          <button className="btn btn-quiet" onClick={() => setConfirming(true)}>
             <Icons.trash size={14} variant="Linear" /> {t.actions.deleteAll}
           </button>
         )}
@@ -38,6 +37,23 @@ function HistoryPage() {
       )}
 
       {actionError && <ErrorState message={actionError} />}
+
+      {confirming && (
+        <div className="confirm-banner" role="alertdialog" aria-label={t.analysis.confirmDeleteAllTitle}>
+          <Icons.critical size={17} variant="Linear" />
+          <div className="confirm-text">
+            <strong>{t.analysis.confirmDeleteAllTitle.replace('{count}', analyses.length)}</strong>
+            <span>{t.analysis.confirmDeleteAllText}</span>
+          </div>
+          <button
+            className="btn btn-danger"
+            onClick={() => { setConfirming(false); removeAll() }}
+          >
+            <Icons.trash size={13} variant="Linear" /> {t.actions.deleteAll}
+          </button>
+          <button className="btn" onClick={() => setConfirming(false)}>{t.actions.cancel}</button>
+        </div>
+      )}
 
       {!loading && !error && analyses.length === 0 && (
         <EmptyState
@@ -58,20 +74,18 @@ function HistoryPage() {
 
             return (
               <div key={analysis.id} className="history-item">
-                <div className="history-item-left">
+                <span className="history-repo">{analysis.repo_name}</span>
+
+                <span className={`history-status ${analysis.status}`} style={{ color }}>
                   <StatusIcon
-                    size={18}
+                    size={13}
                     variant="Linear"
-                    style={{ color, flexShrink: 0 }}
                     className={isRunning(analysis) ? 'spinning' : ''}
                   />
-                  <div className="history-item-info">
-                    <span className="history-repo">{analysis.repo_name}</span>
-                    <span className="history-meta">
-                      {label} &middot; {formatShortDateTime(analysis.created_at)}
-                    </span>
-                  </div>
-                </div>
+                  {label}
+                </span>
+
+                <span className="history-date">{formatShortDateTime(analysis.created_at)}</span>
 
                 <div className="history-item-actions">
                   {isViewable(analysis) && (
@@ -83,7 +97,7 @@ function HistoryPage() {
                     </button>
                   )}
                   <button
-                    className="btn btn-danger"
+                    className="btn btn-quiet history-remove"
                     onClick={() => remove(analysis.id)}
                     aria-label={`${t.actions.deleteAnalysisOf} ${analysis.repo_name}`}
                   >

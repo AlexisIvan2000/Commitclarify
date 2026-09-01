@@ -26,6 +26,8 @@ DAILY_ANALYSIS_LIMIT = int(os.getenv("DAILY_ANALYSIS_LIMIT", "3"))
 SCAN_RATE_PER_MINUTE = int(os.getenv("SCAN_RATE_PER_MINUTE", "4"))
 SCAN_RATE_PER_HOUR = int(os.getenv("SCAN_RATE_PER_HOUR", "20"))
 
+CHROMA_PATH = os.getenv("CHROMA_PATH", "./chroma_db")
+
 COOKIE_SECURE = (GITHUB_CALLBACK_URL or "").startswith("https://")
 
 REQUIRED_SETTINGS = {

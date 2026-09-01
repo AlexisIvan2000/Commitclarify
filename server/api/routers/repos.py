@@ -67,6 +67,7 @@ async def list_repos(request: Request, current_user: User = Depends(get_current_
             "language": repo["language"],
             "visibility": repo["visibility"],
             "url": repo["html_url"],
+            "pushed_at": repo.get("pushed_at"),
         }
         for repo in repos
     ]

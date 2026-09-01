@@ -170,3 +170,66 @@ async def test_the_stream_keeps_the_connection_warm_while_the_scan_is_silent(mon
     await run.task
     await chunks.aclose()
     runs._runs.clear()
+
+
+@pytest.mark.asyncio
+async def test_no_active_run_is_reported_as_nothing(client, auth_headers):
+    response = await client.get("/analyze/active", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.json() is None
+
+
+@pytest.mark.asyncio
+async def test_a_live_run_is_findable_after_a_reload(client, auth_headers, pending):
+    gate = asyncio.Event()
+
+    async def slow(analysis, github_token, session):
+        yield FETCHING
+        await gate.wait()
+
+    with patch.object(runs.pipeline, "run_scan_phase", slow):
+        held = runs.start_scan(pending, "token")
+
+        response = await client.get("/analyze/active", headers=auth_headers)
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "analysis_id": str(pending.id),
+            "kind": runs.SCAN,
+            "repo_name": "owner/repo",
+        }
+
+        gate.set()
+        await held.task
+
+    after = await client.get("/analyze/active", headers=auth_headers)
+    assert after.json() is None
+
+
+@pytest.mark.asyncio
+async def test_the_active_run_of_someone_else_stays_hidden(client, auth_headers, db):
+    stranger = Analysis(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        repo_name="other/repo",
+        status="pending",
+        created_at=utcnow(),
+    )
+    db.add(stranger)
+    await db.commit()
+
+    gate = asyncio.Event()
+
+    async def slow(analysis, github_token, session):
+        yield FETCHING
+        await gate.wait()
+
+    with patch.object(runs.pipeline, "run_scan_phase", slow):
+        held = runs.start_scan(stranger, "token")
+
+        response = await client.get("/analyze/active", headers=auth_headers)
+        assert response.json() is None
+
+        gate.set()
+        await held.task

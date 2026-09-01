@@ -1,16 +1,51 @@
-# React + Vite
+# CommitClarify — interface
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Front React de CommitClarify. L'utilisateur connecte son compte GitHub, choisit un dépôt,
+et obtient un rapport sur ce qui est exposé ou négligé dans son code.
 
-Currently, two official plugins are available:
+## Démarrer
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```bash
+npm install
+npm run dev      # serveur de développement sur http://localhost:5173
+npm run lint     # eslint + contrôle de parité des catalogues fr/en
+npm run build    # build de production
+```
 
-## React Compiler
+L'API est attendue sur `http://localhost:8000`, surchargeable par `VITE_API_URL`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Organisation
 
-## Expanding the ESLint configuration
+```
+src/
+├── core/                partagé par toutes les features
+│   ├── network/         client HTTP, stockage des jetons, erreurs typées
+│   ├── translation/     catalogues fr/en, provider, détection de langue
+│   ├── design/          tokens CSS, carte d'icônes sémantiques
+│   ├── components/      Sidebar, Spinner, ErrorState, EmptyState, PageHeader…
+│   ├── pages/           404, pages légales
+│   └── utils/           dates, téléchargements
+└── features/
+    ├── authentication/  OAuth GitHub, session, compte
+    ├── repositories/    liste des dépôts, filtres
+    ├── scan/            lancement et suivi des analyses, quota
+    ├── report/          rapport, export, approfondissement IA
+    └── history/         analyses passées
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Chaque feature suit le même découpage : `data/` (appels API), `domain/` (règles et
+normalisation), `presentation/` (pages, composants, providers). `core` ne dépend
+jamais d'une feature. La feature `scan` possède le vocabulaire des analyses ; les
+autres l'importent.
+
+## Deux points à connaître
+
+**Le suivi des analyses vit au-dessus des pages.** `RunsProvider` est monté dans
+`AppShell`, donc une analyse continue d'être suivie quand on navigue ailleurs, et un
+rechargement de page la retrouve via `GET /analyze/active`. Une page ne lance jamais
+une analyse sans passer par le provider.
+
+**Les messages d'erreur sont localisés par code, pas par texte.** Le serveur répond en
+anglais avec un `code` et des `params` ; le front cherche `apiErrors[code]` dans le
+catalogue et interpole (`{seconds}`, `{limit}`). Ajouter un code côté serveur impose
+d'ajouter son entrée dans `fr.js` et `en.js` — `npm run lint` échoue sinon.

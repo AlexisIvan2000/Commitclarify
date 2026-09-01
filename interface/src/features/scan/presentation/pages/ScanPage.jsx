@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import EmptyState from '@core/components/EmptyState'
 import ErrorState from '@core/components/ErrorState'
 import PageHeader from '@core/components/PageHeader'
+import Spinner from '@core/components/Spinner'
 import { Icons } from '@core/design/icons'
 import { normalizeLanguage } from '@core/translation'
 import useTranslation, { useLanguage } from '@core/translation/useTranslation'
@@ -11,7 +12,7 @@ import AnalysisStepper from '../components/AnalysisStepper'
 import useQuota from '../provider/useQuota'
 import useRuns from '../provider/useRuns'
 import { STREAM_PHASES } from '../provider/streamEvents'
-import { SCAN } from '../../domain/runs'
+import { SCAN, shouldStartScan } from '../../domain/runs'
 import { hasResults, resultsByAspect } from '../../domain/report'
 import { ANALYSIS_STEPS, SCAN_STEPPER } from '../../domain/steps'
 
@@ -21,7 +22,7 @@ function ScanPage() {
   const [searchParams] = useSearchParams()
   const { language: uiLanguage } = useLanguage()
   const { refresh: refreshQuota } = useQuota()
-  const { run, startScan, release } = useRuns()
+  const { run, ready, startScan, release } = useRuns()
 
   const repoFullName = searchParams.get('repo')
   const language = normalizeLanguage(searchParams.get('lang')) || uiLanguage
@@ -31,9 +32,13 @@ function ScanPage() {
   const elsewhere = live && !mine
 
   useEffect(() => {
-    if (!repoFullName || mine || live) return
+    const start = shouldStartScan({
+      ready, repoFullName, followsThisRepo: mine, somethingRunning: live,
+    })
+    if (!start) return
+
     startScan(repoFullName, language).then(() => refreshQuota?.())
-  }, [repoFullName, language, mine, live, startScan, refreshQuota])
+  }, [ready, repoFullName, language, mine, live, startScan, refreshQuota])
 
   if (!repoFullName) {
     return (
@@ -52,6 +57,7 @@ function ScanPage() {
 
   const running = mine && run.phase === STREAM_PHASES.streaming
   const done = mine && run.phase === STREAM_PHASES.done
+  const settling = !ready && !mine
 
   return (
     <>
@@ -73,6 +79,8 @@ function ScanPage() {
           )}
         />
       )}
+
+      {settling && <Spinner />}
 
       {running && (
         <AnalysisStepper

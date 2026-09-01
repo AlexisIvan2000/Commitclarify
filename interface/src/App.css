@@ -1644,3 +1644,195 @@
     max-width: none;
   }
 }
+
+.folded-severity {
+  margin-top: 0.6rem;
+}
+
+.folded-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.55rem 0.85rem;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  background: var(--surface-muted);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  transition: background var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard);
+}
+
+.folded-toggle:hover {
+  background: var(--surface-sunken);
+  border-color: var(--ink-ghost);
+}
+
+.folded-label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.folded-counts {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.folded-severity .issue-list {
+  margin-top: 0.5rem;
+}
+
+.repo-card { position: relative; }
+
+.repo-card .repo-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.repo-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding-top: 0.55rem;
+  margin-top: auto;
+  border-top: 1px solid var(--border-soft);
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.repo-lang { display: inline-flex; align-items: center; gap: 0.35rem; }
+
+.repo-lang-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.repo-pushed { font-variant-numeric: tabular-nums; }
+
+.repo-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.repo-verdict.none { color: var(--ink-ghost); }
+.repo-verdict.done { color: var(--ok-fg); }
+.repo-verdict.running { color: var(--sev-high-fg); }
+.repo-verdict.failed { color: var(--sev-critical-fg); }
+
+.repo-scan {
+  margin-top: 0.7rem;
+  align-self: flex-start;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.history-repo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.history-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.history-date {
+  flex: none;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-remove { color: var(--ink-faint); }
+.history-remove:hover { color: var(--sev-critical-fg); background: var(--sev-critical-bg); }
+
+.confirm-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  margin-bottom: 1.1rem;
+  padding: 0.85rem 1rem;
+  color: var(--sev-critical-fg);
+  background: var(--sev-critical-bg);
+  border: 1px solid var(--sev-critical-bd);
+  border-radius: var(--radius);
+  animation: riseIn var(--motion-normal) var(--ease-out) both;
+}
+
+.confirm-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.confirm-banner .btn { flex: none; }
+
+@media (max-width: 640px) {
+  .history-item { flex-wrap: wrap; gap: 0.5rem 0.7rem; }
+  .history-repo { flex-basis: 100%; }
+  .confirm-banner { flex-wrap: wrap; }
+  .confirm-text { flex-basis: 100%; }
+}
+
+.account-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(272px, 1fr));
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.account-panels .panel { margin: 0; }
+
+.confirm-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--sev-critical-fg);
+  background: var(--surface);
+  border: 1px solid var(--sev-critical-bd);
+  border-radius: var(--radius);
+  animation: riseIn var(--motion-normal) var(--ease-out) both;
+}
