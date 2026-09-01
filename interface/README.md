@@ -13,23 +13,22 @@ read, not a step the user is walked toward.
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
-npm run lint       # ESLint, translation parity, demo render check
-npm run build      # production build
-npm run preview    # serve the build
+npm run dev         # http://localhost:5173
+npm test            # 92 tests, Vitest
+npm run lint        # ESLint, translation parity, then the test suite
+npm run build       # production build
+npm run preview     # serve the build
 ```
 
 The API is expected at `http://localhost:8000`, overridable with `VITE_API_URL`.
 
-`npm run lint` is three checks in one, and the last two are the ones that catch real
+`npm run lint` runs three things, and the last two are the ones that catch real
 regressions:
 
 - **ESLint** with the React Hooks v7 rules.
 - **`scripts/check-translations.mjs`** compares the French and English catalogs key by key.
   Adding a key to one and forgetting the other fails the build.
-- **`scripts/check-demo.mjs`** compiles the demo fixture through the real report component
-  and renders it server side, asserting 17 properties. If the finding format changes, the
-  demo breaks here rather than in production.
+- **The test suite**, described at the end of this file.
 
 ---
 
@@ -65,6 +64,9 @@ src/
     ├── scan/                starting and following analyses, quota, run provider
     ├── report/              the report, its exports, the AI deepening, the demo
     └── history/             past analyses
+
+tests/                       unit and integration, mirroring the server layout
+scripts/                     translation parity check, demo fixture generator
 ```
 
 Each feature keeps the same split:
@@ -206,15 +208,49 @@ were written by hand.
 
 ---
 
-## Verification
+## Tests
 
-There is no test runner in this project. What exists instead:
+Vitest, sharing the Vite configuration so the `@core` and `@features` aliases resolve with
+no extra setup. jsdom for the components, Testing Library for the queries.
 
-- ESLint, translation parity and the demo render check, all three wired into `npm run lint`.
-- Domain logic extracted into pure functions precisely so it can be checked without a
-  renderer: grouping, folding, the last scan join, the start decision, the coverage split.
-- Server side rendering harnesses used during development to render real components against
-  real fixtures.
+```bash
+npm test           # 92 tests
+npm run test:watch
+```
 
-Screens are not covered by automated visual testing. The demo render check is the closest
-thing, and it exists because the report format is the part most likely to drift.
+```
+tests/
+├── setup.js                        Testing Library matchers
+├── fixtures.js                     loads the real scans, shared language context
+├── unit/                           pure logic, no DOM
+│   ├── issue.test.js                 18  normalization, grouping, folding, verdicts
+│   ├── coverage.test.js              10  scan gaps, indexed corpus, deliberate vs involuntary
+│   ├── runs.test.js                   8  start decision truth table, slow thresholds
+│   ├── lastScan.test.js               8  latest scan per repository, states, language colors
+│   ├── errors.test.js                11  localization by code, interpolation, fallbacks
+│   └── followRun.test.js             13  the reconnection state machine
+└── integration/                    real components, jsdom
+    ├── analysisResultCard.test.jsx    7  rendering against the two real scans
+    └── demo.test.jsx                 17  the public demo, both variants
+```
+
+Tests import through the `@core`, `@features` and `@test` aliases rather than relative
+paths, so moving a test file does not break it.
+
+Two choices worth explaining.
+
+**The fixtures are the real scans.** `scan_petit.json` and `scan_react.json` are read from
+the `server/` directory rather than reduced to hand written samples. That is why the
+assertions can be exact: 21 raw detections become 12 entries, `App.jsx` folds 7 consecutive
+lines into one, the folded low severity chip carries 15 detections across 6 entries. A hand
+made fixture would drift from the product; these cannot.
+
+**The domain is tested directly, the components sparingly.** Rules live in pure functions
+with no React precisely so they can be checked in milliseconds. Components are tested for
+structure, not appearance: how many rows are visible, how many chips are folded, whether a
+low severity detection leaked into the main list. Layout and styling are not covered, and
+would need a human or visual regression tooling.
+
+The demo suite exists for a specific reason: the report format is the part most likely to
+drift, and the demo is the one place where a drift is visible to someone who is not a user
+yet. It fails in CI rather than in production.
