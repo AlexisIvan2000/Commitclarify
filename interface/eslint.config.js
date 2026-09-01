@@ -29,6 +29,7 @@ export default defineConfig([
       },
     },
     rules: {
+      'no-use-before-define': ['error', { functions: false, variables: true, classes: true }],
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },

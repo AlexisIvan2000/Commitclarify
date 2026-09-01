@@ -53,27 +53,6 @@ function RunsProvider({ children }) {
     if (slowTimer.current) clearTimeout(slowTimer.current)
   }, [])
 
-  useEffect(() => {
-    if (rehydrated.current) return
-    rehydrated.current = true
-
-    let abandoned = false
-
-    fetchActiveRun()
-      .then(active => {
-        if (abandoned || !active) return
-
-        inFlight.current = true
-        setRun(freshRun(active.kind, active.analysis_id, active.repo_name))
-        follow(active.kind, active.analysis_id, active.repo_name)
-          .finally(() => { inFlight.current = false })
-      })
-      .catch(() => {})
-      .finally(() => { if (!abandoned) setReady(true) })
-
-    return () => { abandoned = true }
-  }, [follow])
-
   const follow = useCallback(async (kind, analysisId, repoFullName) => {
     const controller = new AbortController()
     connection.current = controller
@@ -132,6 +111,27 @@ function RunsProvider({ children }) {
       if (connection.current === controller) connection.current = null
     }
   }, [stopTimer])
+
+  useEffect(() => {
+    if (rehydrated.current) return
+    rehydrated.current = true
+
+    let abandoned = false
+
+    fetchActiveRun()
+      .then(active => {
+        if (abandoned || !active) return
+
+        inFlight.current = true
+        setRun(freshRun(active.kind, active.analysis_id, active.repo_name))
+        follow(active.kind, active.analysis_id, active.repo_name)
+          .finally(() => { inFlight.current = false })
+      })
+      .catch(() => {})
+      .finally(() => { if (!abandoned) setReady(true) })
+
+    return () => { abandoned = true }
+  }, [follow])
 
   const startScan = useCallback(async (repoFullName, language) => {
     if (inFlight.current) return null
