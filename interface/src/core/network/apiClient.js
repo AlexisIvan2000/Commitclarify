@@ -64,11 +64,45 @@ function refreshSession() {
   return pendingRefresh
 }
 
+const TRANSIENT_DELAYS = [400, 1200, 3000]
+const TRANSIENT_STATUSES = new Set([502, 503, 504])
+
+function isIdempotent(options) {
+  const method = (options.method || 'GET').toUpperCase()
+  return method === 'GET' || method === 'HEAD'
+}
+
+function wait(milliseconds, signal) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, milliseconds)
+    signal?.addEventListener('abort', () => { clearTimeout(timer); resolve() }, { once: true })
+  })
+}
+
+async function sendResilient(path, options) {
+  const delays = isIdempotent(options) ? TRANSIENT_DELAYS : []
+  let attempt = 0
+
+  while (true) {
+    const mayRetry = attempt < delays.length && !options.signal?.aborted
+
+    try {
+      const response = await send(path, options, getAccessToken())
+      if (!mayRetry || !TRANSIENT_STATUSES.has(response.status)) return response
+    } catch (caught) {
+      if (!mayRetry || !(caught instanceof NetworkError)) throw caught
+    }
+
+    await wait(delays[attempt], options.signal)
+    attempt += 1
+  }
+}
+
 export async function request(path, options = {}) {
-  let response = await send(path, options, getAccessToken())
+  let response = await sendResilient(path, options)
 
   if (response.status === 401 && path !== '/auth/refresh' && await refreshSession()) {
-    response = await send(path, options, getAccessToken())
+    response = await sendResilient(path, options)
   }
 
   if (!response.ok) throw await toApiError(response)

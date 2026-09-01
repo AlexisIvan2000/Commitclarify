@@ -1,12 +1,18 @@
 import logging
 import uuid
+from functools import lru_cache
 from pathlib import Path
-
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from core.file_rules import CONFIG_EXTENSIONS, DOC_EXTENSIONS
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _splitter_class():
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+    return RecursiveCharacterTextSplitter
 
 CHUNK_CONFIG = {
     "code": {
@@ -115,7 +121,7 @@ def _chunk_single_file(
     if not content.strip():
         return []
 
-    splitter = RecursiveCharacterTextSplitter(
+    splitter = _splitter_class()(
         chunk_size=config["chunk_size"],
         chunk_overlap=config["chunk_overlap"],
         separators=separators,
