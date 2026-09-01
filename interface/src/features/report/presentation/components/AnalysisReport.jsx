@@ -4,6 +4,7 @@ import { formatDateTime } from '@core/utils/date'
 import { analyzedFiles, shortSha } from '@features/scan/domain/coverage'
 import { ANALYSIS_STEPS } from '@features/scan/domain/steps'
 import AnalysisResultCard from './AnalysisResultCard'
+import ChunkCoverageNote from './ChunkCoverageNote'
 
 function AnalysisReport({ analysis, results, pendingSteps = [], action = null }) {
   const t = useTranslation()
@@ -31,6 +32,8 @@ function AnalysisReport({ analysis, results, pendingSteps = [], action = null })
         </div>
         {action}
       </header>
+
+      <ChunkCoverageNote coverage={coverage} />
 
       <div className="report-axes">
         {ANALYSIS_STEPS.map(aspect => (

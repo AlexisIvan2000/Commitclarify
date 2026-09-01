@@ -45,7 +45,8 @@ def test_a_burst_is_refused_with_a_delay(user, frozen):
     assert error.value.code == "scan_throttled"
     assert 0 < error.value.retry_after <= 60
     assert error.value.headers["Retry-After"] == str(error.value.retry_after)
-    assert "secondes" in error.value.message
+    assert "seconds" in error.value.message
+    assert error.value.params == {"seconds": error.value.retry_after}
 
 
 def test_the_minute_window_reopens_on_time(user, frozen):

@@ -1,12 +1,13 @@
 import { getStrings } from '../translation'
 
 export class ApiError extends Error {
-  constructor(status, detail, code) {
+  constructor(status, detail, code, params) {
     super(detail || `HTTP ${status}`)
     this.name = 'ApiError'
     this.status = status
     this.detail = detail || null
     this.code = code || null
+    this.params = params || {}
   }
 }
 
@@ -31,8 +32,18 @@ export function messageForStatus(status) {
   return errors.unexpected
 }
 
-export function messageForCode(code) {
-  return code ? getStrings().apiErrors[code] || null : null
+export function fillParams(template, params) {
+  if (!template || !params) return template
+
+  return Object.entries(params).reduce(
+    (text, [key, value]) => text.replaceAll(`{${key}}`, value),
+    template,
+  )
+}
+
+export function messageForCode(code, params) {
+  if (!code) return null
+  return fillParams(getStrings().apiErrors[code], params) || null
 }
 
 export function isUnauthorized(error) {
@@ -47,7 +58,9 @@ export function messageOf(error) {
   if (error instanceof NetworkError) return getStrings().errors.network
 
   if (error instanceof ApiError) {
-    return messageForCode(error.code) || error.detail || messageForStatus(error.status)
+    return messageForCode(error.code, error.params)
+      || error.detail
+      || messageForStatus(error.status)
   }
 
   return getStrings().errors.unexpected

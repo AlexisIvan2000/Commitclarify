@@ -26,16 +26,19 @@ async function send(path, options, token) {
 async function toApiError(response) {
   let detail = null
   let code = null
+  let params = null
 
   try {
     const body = await response.json()
     if (typeof body?.detail === 'string' && body.detail.trim()) detail = body.detail
     if (typeof body?.code === 'string' && body.code.trim()) code = body.code
+    if (body?.params && typeof body.params === 'object') params = body.params
+    if (Number.isFinite(body?.retry_after)) params = { ...params, seconds: body.retry_after }
   } catch {
     detail = null
   }
 
-  return new ApiError(response.status, detail, code)
+  return new ApiError(response.status, detail, code, params)
 }
 
 async function requestRefresh() {

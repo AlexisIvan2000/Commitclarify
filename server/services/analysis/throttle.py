@@ -64,7 +64,7 @@ def acquire(user_id: uuid.UUID) -> None:
                 user_id, window.allowed, window.label,
             )
             raise RateLimitedError(
-                f"Trop de scans lances coup sur coup. Reessayez dans {max(1, round(wait))} secondes.",
+                f"Too many scans started in a row. Try again in {max(1, round(wait))} seconds.",
                 code="scan_throttled",
                 retry_after=wait,
             )

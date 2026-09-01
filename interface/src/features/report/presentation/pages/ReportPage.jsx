@@ -10,8 +10,10 @@ import AnalysisReport from '../components/AnalysisReport'
 import AnalysisStepper from '@features/scan/presentation/components/AnalysisStepper'
 import DeepenAction from '../components/DeepenAction'
 import useAnalysisDetail from '../provider/useAnalysisDetail'
-import useDeepenStream, { STREAM_PHASES } from '../provider/useDeepenStream'
 import useQuota from '@features/scan/presentation/provider/useQuota'
+import useRuns from '@features/scan/presentation/provider/useRuns'
+import { STREAM_PHASES } from '@features/scan/presentation/provider/streamEvents'
+import { DEEPEN } from '@features/scan/domain/runs'
 import useReportExport from '../provider/useReportExport'
 import { resultsByAspect } from '@features/scan/domain/report'
 import { canDeepen } from '@features/scan/domain/status'
@@ -24,16 +26,20 @@ function ReportPage() {
   const { analysis, loading, error, reload } = useAnalysisDetail(analysisId)
   const { exportReport, pendingFormat, error: exportError } = useReportExport(analysisId)
   const { quota, refresh: refreshQuota } = useQuota()
+  const { run, startDeepen, release } = useRuns()
   const [deepened, setDeepened] = useState(null)
 
-  const onDeepened = useCallback((updated) => {
-    setDeepened(updated)
-    refreshQuota?.()
-  }, [refreshQuota])
-
-  const deepen = useDeepenStream(analysisId, onDeepened)
+  const mine = run && run.kind === DEEPEN && run.analysisId === analysisId
+  const deepening = Boolean(mine && run.phase === STREAM_PHASES.streaming)
   const shown = deepened || analysis
-  const deepening = deepen.phase === STREAM_PHASES.streaming
+
+  const onDeepen = useCallback(async () => {
+    const updated = await startDeepen(analysisId, analysis?.repo_name)
+    if (updated) {
+      setDeepened(updated)
+      refreshQuota?.()
+    }
+  }, [startDeepen, analysisId, analysis, refreshQuota])
 
   return (
     <>
@@ -81,24 +87,31 @@ function ReportPage() {
 
           {deepening && (
             <AnalysisStepper
-              currentStep={deepen.currentStep}
-              messages={deepen.stepMessages}
-              phase={deepen.phase}
+              currentStep={run.currentStep}
+              messages={run.stepMessages}
+              phase={run.phase}
               steps={DEEPEN_STEPPER}
             />
           )}
 
-          {deepen.reconnecting && (
+          {mine && run.reconnecting && (
             <p className="stream-notice">
               <Icons.running size={14} variant="Linear" className="spinning" />
               {t.analysis.reconnecting}
             </p>
           )}
 
-          {deepen.phase === STREAM_PHASES.error && (
+          {deepening && run.slow && (
+            <p className="stream-notice patience">
+              <Icons.pending size={14} variant="Linear" />
+              {t.runs.takingLonger}
+            </p>
+          )}
+
+          {mine && run.phase === STREAM_PHASES.error && (
             <ErrorState
-              message={deepen.error}
-              onRetry={deepen.recoverable ? deepen.start : undefined}
+              message={run.error}
+              onRetry={run.recoverable ? () => { release(); onDeepen() } : undefined}
             />
           )}
 
@@ -109,7 +122,7 @@ function ReportPage() {
               <DeepenAction
                 remaining={quota?.remaining}
                 running={deepening}
-                onStart={deepen.start}
+                onStart={onDeepen}
               />
             )}
           />

@@ -11,7 +11,7 @@ from repositories import analysis as analysis_repo
 
 logger = logging.getLogger(__name__)
 
-RESERVATION_TTL = timedelta(minutes=20)
+RESERVATION_TTL = timedelta(minutes=60)
 
 
 async def count_today(github_id: int, db: AsyncSession) -> int:
@@ -41,7 +41,8 @@ async def reserve(github_id: int, analysis_id: uuid.UUID, db: AsyncSession) -> N
             github_id, used, DAILY_ANALYSIS_LIMIT,
         )
         raise QuotaExceededError(
-            f"Limite atteinte : {DAILY_ANALYSIS_LIMIT} analyses IA par jour. Reessayez demain."
+            f"Daily limit reached: {DAILY_ANALYSIS_LIMIT} AI analyses per day. Try again tomorrow.",
+            params={"limit": DAILY_ANALYSIS_LIMIT},
         )
 
     analysis_repo.stage_reservation(

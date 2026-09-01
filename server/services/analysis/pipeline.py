@@ -22,6 +22,7 @@ from services.github.repo_fetcher import (
 )
 from services.rag.chunker import chunk_files
 from services.rag.indexer import build_collection_name, collection_exists, index_chunks
+from services.rag.selection import select_chunks
 from services.analysis import quota
 from services.scan import AXES, SCAN_VERSION, run_scan, to_issues
 from services.scan.config import CONFIG_HASH
@@ -40,6 +41,8 @@ SCAN_IN_PROGRESS = (SCANNING, LEGACY_SCANNING)
 
 AGENT_STEPS = AXES
 
+PROGRESS_INTERVAL = 0.5
+
 TRIAGE_AXES = ("secrets_detection", "gitignore_check")
 DISCOVERY_AXES = ("quality_check", "readme_check")
 
@@ -55,7 +58,7 @@ def assert_scannable(analysis: Analysis) -> None:
         return
 
     raise ConflictError(
-        "Ce scan est deja termine. Consultez son resultat ou lancez une nouvelle analyse.",
+        "This scan is already finished. Open its report or start a new analysis.",
         code="analysis_finished",
     )
 
@@ -71,10 +74,10 @@ def assert_analyzable(analysis: Analysis) -> None:
         return
 
     if analysis.status == COMPLETED:
-        raise ConflictError("Cette analyse IA est deja terminee.", code="analysis_finished")
+        raise ConflictError("This AI analysis is already finished.", code="analysis_finished")
 
     raise ConflictError(
-        "Le scan doit etre termine avant de lancer l'analyse IA.",
+        "The scan must finish before the AI analysis can start.",
         code="scan_required",
     )
 
@@ -214,7 +217,9 @@ async def run_ai_phase(
             "message": text("progress.fetching", language),
         }
 
-        repo_data = await fetch_repo_files(owner, repo, github_token)
+        repo_data = await fetch_repo_files(
+            owner, repo, github_token, repo_sha=analysis.repo_sha,
+        )
         files = repo_data["files"]
         repo_sha = repo_data["sha"]
 
@@ -244,13 +249,53 @@ async def run_ai_phase(
                 "message": text("progress.indexing", language),
             }
 
-            index_result = await index_chunks(
+            selection = select_chunks(chunk_result["code_chunks"] + readme_chunks)
+            progress = {"done": 0, "total": len(selection["chunks"])}
+
+            indexing = asyncio.create_task(index_chunks(
                 user_id=user_id,
                 repo_name=analysis.repo_name,
                 sha=repo_sha,
-                chunks=chunk_result["code_chunks"] + readme_chunks,
-            )
+                chunks=selection["chunks"],
+                on_progress=lambda done, total: progress.update(done=done, total=total),
+            ))
+
+            published = 0
+            while not indexing.done():
+                await asyncio.sleep(PROGRESS_INTERVAL)
+
+                if progress["done"] > published:
+                    published = progress["done"]
+                    yield {
+                        "event": "progress",
+                        "step": "indexing",
+                        "message": text(
+                            "progress.indexing_at", language,
+                            done=published, total=progress["total"],
+                        ),
+                        "indexed": published,
+                        "to_index": progress["total"],
+                    }
+
+            index_result = await indexing
             collection_name = index_result["collection_name"]
+
+            if selection["dropped"]:
+                logger.info(
+                    "Analyse IA %s: %d fragment(s) non indexe(s) sur %d (%s)",
+                    analysis_id, selection["dropped"], selection["total"],
+                    selection["dropped_by_tier"],
+                )
+
+            chunk_coverage = {
+                "total": selection["total"],
+                "indexed": selection["indexed"],
+                "dropped": selection["dropped"],
+                "dropped_by_tier": selection["dropped_by_tier"],
+                "complete": selection["complete"],
+            }
+            analysis.coverage = {**(analysis.coverage or {}), "chunks": chunk_coverage}
+            await db.commit()
 
             yield {
                 "event": "progress",
@@ -258,6 +303,7 @@ async def run_ai_phase(
                 "message": text(
                     "progress.indexed", language, count=index_result["chunks_indexed"],
                 ),
+                "chunk_coverage": chunk_coverage,
             }
 
         yield {

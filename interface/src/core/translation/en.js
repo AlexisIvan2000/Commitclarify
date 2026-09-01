@@ -16,6 +16,7 @@ const en = {
     backHome: 'Back to home',
     retry: 'Retry',
     resume: 'Resume follow',
+    dismiss: 'Dismiss',
     view: 'View',
     deleteAll: 'Delete all',
     deleteAnalysisOf: 'Delete the scan of',
@@ -54,6 +55,17 @@ const en = {
     renderCrash: 'This page could not be displayed.',
   },
 
+  runs: {
+    scanDone: 'Scan finished',
+    deepenDone: 'AI analysis finished',
+    failed: 'The analysis failed',
+    openReport: 'Open the report',
+    busyTitle: 'An analysis is already running',
+    busyText: 'The scan of {repo} is still running. Wait for it to finish before starting another.',
+    followIt: 'Follow that analysis',
+    takingLonger: 'This repository is large: the analysis will take longer than usual. You can leave this page, it keeps running on the server.',
+  },
+
   apiErrors: {
     unauthorized: 'Your session has expired, please sign in again.',
     validation_error: 'The request is invalid.',
@@ -61,6 +73,12 @@ const en = {
     conflict: 'This action is already running or already done.',
     analysis_running: 'This analysis is already running.',
     analysis_finished: 'This analysis is already finished. Open its report or start a new one.',
+    scan_throttled: 'Too many scans started in a row. Try again in {seconds} seconds.',
+    run_in_flight: 'An analysis is already running on your account. Wait for it to finish.',
+    run_interrupted: 'The server interrupted this analysis. Start it again.',
+    run_failed: 'The analysis failed.',
+    scan_required: 'The scan must finish before the AI analysis can start.',
+    rate_limited: 'Too many requests. Try again in {seconds} seconds.',
     quota_exceeded: 'You have used up today\'s AI triages. Scanning is still available.',
     external_service_error: 'An external service is unavailable. Try again in a moment.',
     internal_error: 'The server ran into an error.',
@@ -128,6 +146,18 @@ const en = {
       capped: '{count} files beyond the analysis limit, not read',
       truncated: 'GitHub truncated the repository tree, not every file is visible',
       failures: '{count} files could not be fetched',
+    },
+    chunkCoverage: {
+      lead: '{indexed} fragments indexed out of {total} for the AI search:',
+      breakdown: 'the rest is {detail}',
+      involuntary: '{count} source code fragments could not be indexed: the repository is over the limit',
+      tiers: {
+        genere_ou_vendored: 'generated or vendored code',
+        tests: 'test files',
+        source: 'source code',
+        configuration: 'configuration',
+        documentation: 'documentation',
+      },
     },
     metrics: {
       title: 'Repository metrics',

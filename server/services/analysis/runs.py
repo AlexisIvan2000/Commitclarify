@@ -1,12 +1,3 @@
-# Registre en memoire, donc valable pour UN SEUL process (Procfile : uvicorn sans --workers).
-# Il porte a lui seul trois garanties :
-#   - la reprise apres deconnexion (un client qui se rebranche retrouve son run et rejoue ses evenements),
-#   - la limite d'un scan concurrent par utilisateur (assert_free lit les runs vivants),
-#   - la detection des orphelins (un statut "scanning" sans run vivant = relancable).
-# Avec plusieurs workers les trois cassent en silence : un utilisateur peut lancer deux scans,
-# et un rebranchement qui atterrit sur l'autre worker ne trouve rien et relance le scan.
-# Passer a plusieurs workers impose donc de deplacer ce registre dans un Redis partage
-# (pub/sub pour le flux SSE, cles avec TTL pour la concurrence).
 
 import asyncio
 import json
@@ -34,9 +25,14 @@ DEEPEN = "deepen"
 HEARTBEAT = {"event": "ping"}
 INTERRUPTED = {
     "event": "error",
-    "message": "Le serveur a interrompu cette execution. Relancez l'analyse.",
+    "code": "run_interrupted",
+    "message": "The server interrupted this run. Start the analysis again.",
 }
-MISSING = {"event": "error", "message": "Analyse introuvable"}
+MISSING = {
+    "event": "error",
+    "code": "not_found",
+    "message": "Analysis not found",
+}
 
 Source = Callable[[], AsyncIterator[dict]]
 
@@ -100,11 +96,11 @@ def running_for(user_id: uuid.UUID, phase: str | None = None) -> int:
 
 
 ALREADY_RUNNING = {
-    SCAN: "Un scan est deja en cours sur votre compte. Reessayez dans une quinzaine de secondes.",
-    DEEPEN: "Une analyse IA est deja en cours sur votre compte. Reessayez dans une quinzaine de secondes.",
+    SCAN: "A scan is already running on your account.",
+    DEEPEN: "An AI analysis is already running on your account.",
 }
 
-RETRY_WHEN_BUSY = 15
+RETRY_WHEN_BUSY = 30
 
 
 def assert_free(user_id: uuid.UUID, phase: str) -> None:
@@ -145,7 +141,7 @@ async def _drive(run: Run, source: Source) -> None:
             "Execution %s de l'analyse %s echouee: %s",
             run.phase, run.analysis_id, exc, exc_info=True,
         )
-        run.emit({"event": "error", "message": str(exc)})
+        run.emit({"event": "error", "code": "run_failed", "message": str(exc)})
     finally:
         run.close()
 

@@ -380,6 +380,10 @@ TEXTS: dict[str, dict[str, str]] = {
         "fr": "Indexation en cours...",
         "en": "Indexing...",
     },
+    "progress.indexing_at": {
+        "fr": "{done} / {total} fragments indexes",
+        "en": "{done} / {total} fragments indexed",
+    },
     "progress.indexed": {
         "fr": "{count} chunks indexes",
         "en": "{count} chunks indexed",

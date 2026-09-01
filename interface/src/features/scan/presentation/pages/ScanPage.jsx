@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import EmptyState from '@core/components/EmptyState'
 import ErrorState from '@core/components/ErrorState'
@@ -8,74 +9,31 @@ import useTranslation, { useLanguage } from '@core/translation/useTranslation'
 import AnalysisReport from '@features/report/presentation/components/AnalysisReport'
 import AnalysisStepper from '../components/AnalysisStepper'
 import useQuota from '../provider/useQuota'
-import useScanStream, { STREAM_PHASES } from '../provider/useScanStream'
+import useRuns from '../provider/useRuns'
+import { STREAM_PHASES } from '../provider/streamEvents'
+import { SCAN } from '../../domain/runs'
 import { hasResults, resultsByAspect } from '../../domain/report'
 import { ANALYSIS_STEPS, SCAN_STEPPER } from '../../domain/steps'
-
-function ScanRun({ repoFullName, language }) {
-  const t = useTranslation()
-  const navigate = useNavigate()
-  const { refresh: refreshQuota } = useQuota()
-
-  const {
-    phase, currentStep, stepMessages, results, analysisId, analysis,
-    error, reconnecting, recoverable, resume,
-  } = useScanStream(repoFullName, language, refreshQuota)
-
-  const running = phase === STREAM_PHASES.streaming || phase === STREAM_PHASES.starting
-
-  return (
-    <>
-      <PageHeader
-        icon={<Icons.scan size={22} variant="Linear" />}
-        title={t.analysis.scanTitle}
-        actions={<span className="page-subject">{repoFullName}</span>}
-      />
-
-      {running && (
-        <AnalysisStepper
-          currentStep={currentStep}
-          messages={stepMessages}
-          phase={phase}
-          steps={SCAN_STEPPER}
-        />
-      )}
-
-      {reconnecting && (
-        <p className="stream-notice">
-          <Icons.running size={14} variant="Linear" className="spinning" />
-          {t.analysis.reconnecting}
-        </p>
-      )}
-
-      {phase === STREAM_PHASES.error && (
-        <ErrorState message={error} onRetry={recoverable ? resume : undefined} />
-      )}
-
-      {phase === STREAM_PHASES.done && (
-        <AnalysisReport
-          analysis={analysis || { repo_name: repoFullName }}
-          results={hasResults(analysis) ? resultsByAspect(analysis) : results}
-          pendingSteps={running ? ANALYSIS_STEPS : []}
-          action={analysisId && (
-            <button className="btn" onClick={() => navigate(`/report/${analysisId}`)}>
-              {t.actions.fullReport} <Icons.forward size={14} variant="Linear" />
-            </button>
-          )}
-        />
-      )}
-    </>
-  )
-}
 
 function ScanPage() {
   const t = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { language: uiLanguage } = useLanguage()
+  const { refresh: refreshQuota } = useQuota()
+  const { run, startScan, release } = useRuns()
 
   const repoFullName = searchParams.get('repo')
   const language = normalizeLanguage(searchParams.get('lang')) || uiLanguage
+
+  const live = Boolean(run && run.phase === STREAM_PHASES.streaming)
+  const mine = Boolean(run && run.kind === SCAN && run.repoFullName === repoFullName)
+  const elsewhere = live && !mine
+
+  useEffect(() => {
+    if (!repoFullName || mine || live) return
+    startScan(repoFullName, language).then(() => refreshQuota?.())
+  }, [repoFullName, language, mine, live, startScan, refreshQuota])
 
   if (!repoFullName) {
     return (
@@ -92,7 +50,77 @@ function ScanPage() {
     )
   }
 
-  return <ScanRun key={`${repoFullName}:${language}`} repoFullName={repoFullName} language={language} />
+  const running = mine && run.phase === STREAM_PHASES.streaming
+  const done = mine && run.phase === STREAM_PHASES.done
+
+  return (
+    <>
+      <PageHeader
+        icon={<Icons.scan size={22} variant="Linear" />}
+        title={t.analysis.scanTitle}
+        actions={<span className="page-subject">{repoFullName}</span>}
+      />
+
+      {elsewhere && (
+        <EmptyState
+          icon={<Icons.running size={30} variant="Linear" className="spinning" />}
+          title={t.runs.busyTitle}
+          text={t.runs.busyText.replace('{repo}', run.repoFullName)}
+          action={(
+            <button className="btn" onClick={() => navigate(`/scan?repo=${run.repoFullName}`)}>
+              {t.runs.followIt} <Icons.forward size={14} variant="Linear" />
+            </button>
+          )}
+        />
+      )}
+
+      {running && (
+        <AnalysisStepper
+          currentStep={run.currentStep}
+          messages={run.stepMessages}
+          phase={run.phase}
+          steps={SCAN_STEPPER}
+        />
+      )}
+
+      {mine && run.reconnecting && (
+        <p className="stream-notice">
+          <Icons.running size={14} variant="Linear" className="spinning" />
+          {t.analysis.reconnecting}
+        </p>
+      )}
+
+      {running && run.slow && (
+        <p className="stream-notice patience">
+          <Icons.pending size={14} variant="Linear" />
+          {t.runs.takingLonger}
+        </p>
+      )}
+
+      {mine && run.phase === STREAM_PHASES.error && (
+        <ErrorState
+          message={run.error}
+          onRetry={() => {
+            release()
+            startScan(repoFullName, language)
+          }}
+        />
+      )}
+
+      {done && (
+        <AnalysisReport
+          analysis={run.analysis || { repo_name: repoFullName }}
+          results={hasResults(run.analysis) ? resultsByAspect(run.analysis) : run.results}
+          pendingSteps={running ? ANALYSIS_STEPS : []}
+          action={run.analysisId && (
+            <button className="btn" onClick={() => navigate(`/report/${run.analysisId}`)}>
+              {t.actions.fullReport} <Icons.forward size={14} variant="Linear" />
+            </button>
+          )}
+        />
+      )}
+    </>
+  )
 }
 
 export default ScanPage

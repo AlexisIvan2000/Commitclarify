@@ -128,7 +128,7 @@ async def test_a_crashing_run_closes_on_an_error_event():
     run = runs.start(analysis, runs.SCAN, source)
     await run.task
 
-    assert run.events[-1] == {"event": "error", "message": "boom"}
+    assert run.events[-1] == {"event": "error", "code": "run_failed", "message": "boom"}
     assert not run.alive
 
 

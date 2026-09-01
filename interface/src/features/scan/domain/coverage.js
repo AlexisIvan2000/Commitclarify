@@ -41,3 +41,27 @@ export function shortSha(coverage, analysis) {
   const sha = coverage?.sha || analysis?.repo_sha
   return typeof sha === 'string' ? sha.slice(0, 7) : null
 }
+
+const DELIBERATE_TIERS = new Set(['genere_ou_vendored', 'tests'])
+
+export function chunkCoverage(coverage) {
+  const chunks = coverage?.chunks
+
+  if (!chunks || chunks.complete !== false || !(chunks.dropped > 0)) return null
+
+  const byTier = chunks.dropped_by_tier || {}
+  const deliberate = Object.entries(byTier)
+    .filter(([tier]) => DELIBERATE_TIERS.has(tier))
+    .reduce((total, [, count]) => total + count, 0)
+
+  return {
+    total: chunks.total,
+    indexed: chunks.indexed,
+    dropped: chunks.dropped,
+    deliberate,
+    involuntary: chunks.dropped - deliberate,
+    tiers: Object.entries(byTier)
+      .map(([tier, count]) => ({ tier, count }))
+      .sort((a, b) => b.count - a.count),
+  }
+}

@@ -1,9 +1,10 @@
 import logging
+from collections.abc import Callable
 
 import chromadb
 from chromadb.config import Settings
 
-from services.rag.embeddings import get_embeddings_batch
+from services.rag.embeddings import get_embeddings_batch, model_tag
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +19,14 @@ INSERT_BATCH = 500
 
 
 def build_collection_name(user_id: str, repo_name: str, sha: str) -> str:
+    head = f"{COLLECTION_PREFIX}-{model_tag()}-{user_id[:8]}-{sha[:8]}"
     clean_repo = repo_name.replace("/", "-").replace("_", "-").lower()
-    name = f"{COLLECTION_PREFIX}-{user_id[:8]}-{clean_repo}-{sha[:8]}"
-    return name[:MAX_COLLECTION_NAME]
+    budget = MAX_COLLECTION_NAME - len(head) - 1
+
+    if budget < 1:
+        return head[:MAX_COLLECTION_NAME]
+
+    return f"{head}-{clean_repo[:budget]}".rstrip("-")
 
 
 def collection_exists(user_id: str, repo_name: str, sha: str) -> bool:
@@ -46,6 +52,7 @@ async def index_chunks(
     repo_name: str,
     sha: str,
     chunks: list[dict],
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> dict:
     collection_name = build_collection_name(user_id, repo_name, sha)
 
@@ -61,7 +68,9 @@ async def index_chunks(
     if not chunks:
         return {"collection_name": collection_name, "cached": False, "chunks_indexed": 0}
 
-    embeddings = await get_embeddings_batch([chunk["content"] for chunk in chunks])
+    embeddings = await get_embeddings_batch(
+        [chunk["content"] for chunk in chunks], on_progress=on_progress,
+    )
 
     for i in range(0, len(chunks), INSERT_BATCH):
         batch = chunks[i:i + INSERT_BATCH]
