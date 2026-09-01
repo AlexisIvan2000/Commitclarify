@@ -1,12 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { messageOf } from '@core/network/errors'
-import { fetchAnalysis, openAnalysisStream, startAnalysis } from '../../data/analysisApi'
-import {
-  STREAM_PHASES,
-  TERMINAL_EVENTS,
-  emptyStreamState,
-  reduceEvent,
-} from './streamEvents'
+import { getStrings } from '@core/translation'
+import { openAnalysisStream, startAnalysis } from '../../data/analysisApi'
+import followRun, { RUN_OUTCOMES } from './followRun'
+import { STREAM_PHASES, emptyStreamState, reduceEvent } from './streamEvents'
 
 export { STREAM_PHASES }
 
@@ -14,55 +11,84 @@ export default function useScanStream(repoFullName, language, onStarted) {
   const [state, setState] = useState(() => emptyStreamState())
   const [analysisId, setAnalysisId] = useState(null)
   const [analysis, setAnalysis] = useState(null)
+  const [attach, setAttach] = useState(0)
 
-  const started = useRef(false)
-  const mounted = useRef(true)
+  const requested = useRef(false)
   const startedCallback = useRef(onStarted)
-  startedCallback.current = onStarted
 
   useEffect(() => {
-    mounted.current = true
+    startedCallback.current = onStarted
+  }, [onStarted])
 
-    async function run() {
-      try {
-        const { analysis_id: newAnalysisId } = await startAnalysis(repoFullName, language)
+  useEffect(() => {
+    if (!repoFullName || requested.current) return undefined
+    requested.current = true
+
+    let abandoned = false
+
+    startAnalysis(repoFullName, language)
+      .then(({ analysis_id: created }) => {
+        if (abandoned) return
         startedCallback.current?.()
-
-        if (mounted.current) {
-          setAnalysisId(newAnalysisId)
-          setState(previous => ({ ...previous, phase: STREAM_PHASES.streaming }))
-        }
-
-        let finished = false
-
-        for await (const event of openAnalysisStream(newAnalysisId)) {
-          if (mounted.current) setState(previous => reduceEvent(previous, event))
-          if (TERMINAL_EVENTS.has(event.event)) {
-            finished = event.event === 'done'
-            break
-          }
-        }
-
-        if (finished && mounted.current) {
-          setAnalysis(await fetchAnalysis(newAnalysisId))
-        }
-      } catch (caught) {
-        if (!mounted.current) return
+        setAnalysisId(created)
+        setState(previous => ({ ...previous, phase: STREAM_PHASES.streaming }))
+      })
+      .catch(caught => {
+        if (abandoned) return
         setState(previous => ({
           ...previous,
           phase: STREAM_PHASES.error,
           error: messageOf(caught),
         }))
-      }
-    }
+      })
 
-    if (!started.current && repoFullName) {
-      started.current = true
-      run()
-    }
-
-    return () => { mounted.current = false }
+    return () => { abandoned = true }
   }, [repoFullName, language])
 
-  return { ...state, analysisId, analysis }
+  useEffect(() => {
+    if (!analysisId) return undefined
+
+    const controller = new AbortController()
+
+    followRun({
+      analysisId,
+      openStream: openAnalysisStream,
+      onEvent: event => setState(previous => reduceEvent(previous, event)),
+      signal: controller.signal,
+    })
+      .then(({ outcome, analysis: loaded }) => {
+        if (controller.signal.aborted) return
+
+        if (outcome === RUN_OUTCOMES.lost) {
+          setState(previous => ({
+            ...previous,
+            reconnecting: false,
+            recoverable: true,
+            phase: STREAM_PHASES.error,
+            error: getStrings().errors.streamLost,
+          }))
+          return
+        }
+
+        if (loaded) setAnalysis(loaded)
+      })
+      .catch(caught => {
+        if (controller.signal.aborted) return
+        setState(previous => ({
+          ...previous,
+          reconnecting: false,
+          phase: STREAM_PHASES.error,
+          error: messageOf(caught),
+        }))
+      })
+
+    return () => controller.abort()
+  }, [analysisId, attach])
+
+  const resume = useCallback(() => {
+    setState(emptyStreamState(STREAM_PHASES.streaming))
+    setAttach(previous => previous + 1)
+  }, [])
+
+  return { ...state, analysisId, analysis, resume }
 }

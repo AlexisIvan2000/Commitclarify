@@ -18,6 +18,17 @@ for table in Base.metadata.tables.values():
             column.type = Uuid(as_uuid=True, native_uuid=False)
 
 
+@pytest.fixture(autouse=True)
+def clean_run_state():
+    from services.analysis import runs, throttle
+
+    runs._runs.clear()
+    throttle._hits.clear()
+    yield
+    runs._runs.clear()
+    throttle._hits.clear()
+
+
 @pytest.fixture(scope="session")
 def event_loop():
     loop = asyncio.new_event_loop()

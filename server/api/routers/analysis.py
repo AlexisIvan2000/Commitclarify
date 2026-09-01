@@ -13,7 +13,7 @@ from core.language import DEFAULT_LANGUAGE, normalize
 from models.db import Analysis, User
 from models.schemas import AnalysisDetailResponse, AnalysisResponse, QuotaResponse
 from repositories import analysis as analysis_repo
-from services.analysis import pipeline, quota
+from services.analysis import pipeline, quota, runs
 from services.authentication.auth import decrypt_github_token
 from services.export.pdf import generate_pdf
 from services.export.serializers import analysis_to_dict, export_filename
@@ -96,6 +96,14 @@ SSE_HEADERS = {
 }
 
 
+def _sse(run: runs.Run) -> StreamingResponse:
+    return StreamingResponse(
+        runs.stream(run),
+        media_type="text/event-stream",
+        headers=SSE_HEADERS,
+    )
+
+
 @router.get("/{analysis_id}/stream")
 async def stream_scan(
     analysis_id: uuid.UUID,
@@ -103,15 +111,13 @@ async def stream_scan(
     db: AsyncSession = Depends(get_db),
 ):
     analysis = await _owned_analysis(analysis_id, current_user, db)
-    pipeline.assert_scannable(analysis)
+    run = runs.find(analysis_id, runs.SCAN)
 
-    github_token = decrypt_github_token(current_user.access_token)
+    if run is None:
+        pipeline.assert_scannable(analysis)
+        run = runs.start_scan(analysis, decrypt_github_token(current_user.access_token))
 
-    return StreamingResponse(
-        pipeline.run_scan_phase(analysis, github_token, db),
-        media_type="text/event-stream",
-        headers=SSE_HEADERS,
-    )
+    return _sse(run)
 
 
 @router.get("/{analysis_id}/deepen/stream")
@@ -121,17 +127,14 @@ async def stream_ai_analysis(
     db: AsyncSession = Depends(get_db),
 ):
     analysis = await _owned_analysis(analysis_id, current_user, db)
-    pipeline.assert_analyzable(analysis)
+    run = runs.find(analysis_id, runs.DEEPEN)
 
-    await quota.reserve(current_user.github_id, analysis.id, db)
+    if run is None:
+        pipeline.assert_analyzable(analysis)
+        await quota.reserve(current_user.github_id, analysis.id, db)
+        run = runs.start_deepen(analysis, decrypt_github_token(current_user.access_token))
 
-    github_token = decrypt_github_token(current_user.access_token)
-
-    return StreamingResponse(
-        pipeline.run_ai_phase(analysis, github_token, db),
-        media_type="text/event-stream",
-        headers=SSE_HEADERS,
-    )
+    return _sse(run)
 
 
 @router.get("/{analysis_id}", response_model=AnalysisDetailResponse)

@@ -29,6 +29,10 @@ async def get_quota(github_id: int, db: AsyncSession) -> dict:
 
 
 async def reserve(github_id: int, analysis_id: uuid.UUID, db: AsyncSession) -> None:
+    if await analysis_repo.has_live_reservation(analysis_id, db):
+        logger.info("Reservation deja vivante pour l'analyse %s", analysis_id)
+        return
+
     used = await count_today(github_id, db)
 
     if used >= DAILY_ANALYSIS_LIMIT:

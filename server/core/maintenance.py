@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from core.database import async_session
-from services.analysis import quota
+from services.analysis import quota, runs
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +13,8 @@ async def sweep_once() -> int:
     async with async_session() as db:
         released = await quota.sweep_expired(db)
         await db.commit()
+
+    runs.forget_finished()
 
     return released
 

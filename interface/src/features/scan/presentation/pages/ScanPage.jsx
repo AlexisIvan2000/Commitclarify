@@ -18,7 +18,8 @@ function ScanRun({ repoFullName, language }) {
   const { refresh: refreshQuota } = useQuota()
 
   const {
-    phase, currentStep, stepMessages, results, analysisId, analysis, error,
+    phase, currentStep, stepMessages, results, analysisId, analysis,
+    error, reconnecting, recoverable, resume,
   } = useScanStream(repoFullName, language, refreshQuota)
 
   const running = phase === STREAM_PHASES.streaming || phase === STREAM_PHASES.starting
@@ -40,7 +41,16 @@ function ScanRun({ repoFullName, language }) {
         />
       )}
 
-      {phase === STREAM_PHASES.error && <ErrorState message={error} />}
+      {reconnecting && (
+        <p className="stream-notice">
+          <Icons.running size={14} variant="Linear" className="spinning" />
+          {t.analysis.reconnecting}
+        </p>
+      )}
+
+      {phase === STREAM_PHASES.error && (
+        <ErrorState message={error} onRetry={recoverable ? resume : undefined} />
+      )}
 
       {phase === STREAM_PHASES.done && (
         <AnalysisReport

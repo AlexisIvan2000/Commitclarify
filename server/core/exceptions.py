@@ -47,6 +47,25 @@ class QuotaExceededError(AppError):
     default_message = "Quota atteint"
 
 
+class RateLimitedError(AppError):
+    status_code = 429
+    code = "rate_limited"
+    default_message = "Trop de requetes"
+
+    def __init__(
+        self,
+        message: str | None = None,
+        code: str | None = None,
+        retry_after: float = 60.0,
+    ):
+        super().__init__(message, code)
+        self.retry_after = max(1, round(retry_after))
+
+    @property
+    def headers(self) -> dict[str, str]:
+        return {"Retry-After": str(self.retry_after)}
+
+
 class ExternalServiceError(AppError):
     status_code = 502
     code = "external_service_error"
@@ -63,7 +82,14 @@ def register_exception_handlers(app: FastAPI) -> None:
         else:
             logger.info("%s sur %s: %s", type(exc).__name__, request.url.path, exc.message)
 
+        content = {"detail": exc.message, "code": exc.code}
+        retry_after = getattr(exc, "retry_after", None)
+
+        if retry_after is not None:
+            content["retry_after"] = retry_after
+
         return JSONResponse(
             status_code=exc.status_code,
-            content={"detail": exc.message, "code": exc.code},
+            content=content,
+            headers=getattr(exc, "headers", None),
         )

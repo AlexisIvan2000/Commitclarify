@@ -1,8 +1,6 @@
 import asyncio
-import json
 import logging
 
-from datetime import timedelta
 from typing import AsyncIterator
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,8 +28,6 @@ from services.scan.config import CONFIG_HASH
 
 logger = logging.getLogger(__name__)
 
-STALE_AFTER = timedelta(minutes=15)
-
 PENDING = "pending"
 SCANNING = "scanning"
 SCANNED = "scanned"
@@ -48,25 +44,15 @@ TRIAGE_AXES = ("secrets_detection", "gitignore_check")
 DISCOVERY_AXES = ("quality_check", "readme_check")
 
 
-def sse_event(data: dict) -> str:
-    return f"data: {json.dumps(data)}\n\n"
-
-
-def _is_stale(analysis: Analysis) -> bool:
-    started = analysis.phase_started_at or analysis.created_at
-    return started < utcnow() - STALE_AFTER
-
-
 def assert_scannable(analysis: Analysis) -> None:
     if analysis.status == PENDING:
         return
 
-    if analysis.status in SCAN_IN_PROGRESS and _is_stale(analysis):
-        logger.warning("Scan %s relance apres interruption", analysis.id)
-        return
-
     if analysis.status in SCAN_IN_PROGRESS:
-        raise ConflictError("Ce scan est deja en cours.", code="analysis_running")
+        logger.warning(
+            "Scan %s relance : plus aucune execution ne le portait", analysis.id,
+        )
+        return
 
     raise ConflictError(
         "Ce scan est deja termine. Consultez son resultat ou lancez une nouvelle analyse.",
@@ -78,12 +64,11 @@ def assert_analyzable(analysis: Analysis) -> None:
     if analysis.status == SCANNED:
         return
 
-    if analysis.status == ANALYZING and _is_stale(analysis):
-        logger.warning("Analyse IA %s relancee apres interruption", analysis.id)
-        return
-
     if analysis.status == ANALYZING:
-        raise ConflictError("Cette analyse IA est deja en cours.", code="analysis_running")
+        logger.warning(
+            "Analyse IA %s relancee : plus aucune execution ne la portait", analysis.id,
+        )
+        return
 
     if analysis.status == COMPLETED:
         raise ConflictError("Cette analyse IA est deja terminee.", code="analysis_finished")
@@ -101,7 +86,7 @@ async def run_scan_phase(
     analysis: Analysis,
     github_token: str,
     db: AsyncSession,
-) -> AsyncIterator[str]:
+) -> AsyncIterator[dict]:
     owner, repo = analysis.repo_name.split("/")
     analysis_id = str(analysis.id)
     language = normalize(analysis.language)
@@ -114,11 +99,11 @@ async def run_scan_phase(
             "Scan %s demarre pour %s (langue=%s)", analysis_id, analysis.repo_name, language,
         )
 
-        yield sse_event({
+        yield {
             "event": "progress",
             "step": "fetching",
             "message": text("progress.fetching", language),
-        })
+        }
 
         repository = await get_repository(owner, repo, github_token)
         repo_sha = await get_repo_latest_sha(owner, repo, github_token)
@@ -127,37 +112,38 @@ async def run_scan_phase(
         scan = await scan_cache.get(key, db)
 
         if scan is not None:
-            yield sse_event({
+            yield {
                 "event": "progress",
                 "step": "scanning",
                 "message": text("progress.scanning", language),
-            })
+                "cached": True,
+            }
         else:
             repo_data = await fetch_repo_files(
                 owner, repo, github_token, repo_sha=repo_sha,
             )
             coverage = coverage_of(repo_data)
 
-            yield sse_event({
+            yield {
                 "event": "progress",
                 "step": "fetching",
                 "message": text("progress.fetched", language, count=coverage["fetched_files"]),
                 "truncated": repo_data["truncated"],
                 "stats": repo_data["stats"],
-            })
+            }
 
             if not repo_data["tracked_paths"]:
                 logger.warning("Scan %s: aucun fichier versionne", analysis_id)
                 analysis.status = FAILED
                 await db.commit()
-                yield sse_event({"event": "error", "message": text("progress.no_files", language)})
+                yield {"event": "error", "message": text("progress.no_files", language)}
                 return
 
-            yield sse_event({
+            yield {
                 "event": "progress",
                 "step": "scanning",
                 "message": text("progress.scanning", language),
-            })
+            }
 
             scan = await run_scan(
                 repo_data["files"],
@@ -179,18 +165,18 @@ async def run_scan_phase(
         await db.commit()
 
         for axis in AXES:
-            yield sse_event({
+            yield {
                 "event": "step_complete",
                 "step": axis,
                 "result": _axis_event(scan["axes"][axis]),
-            })
+            }
 
         logger.info(
             "Scan %s termine: %d findings, couverture complete=%s",
             analysis_id, scan["summary"]["findings"], scan["complete"],
         )
 
-        yield sse_event({
+        yield {
             "event": "done",
             "analysis_id": analysis_id,
             "status": SCANNED,
@@ -198,20 +184,20 @@ async def run_scan_phase(
             "scan_version": scan["scan_version"],
             "coverage": scan["coverage"],
             "can_deepen": True,
-        })
+        }
 
     except Exception as exc:
         logger.error("Scan %s echoue: %s", analysis_id, exc, exc_info=True)
         analysis.status = FAILED
         await db.commit()
-        yield sse_event({"event": "error", "message": str(exc)})
+        yield {"event": "error", "message": str(exc)}
 
 
 async def run_ai_phase(
     analysis: Analysis,
     github_token: str,
     db: AsyncSession,
-) -> AsyncIterator[str]:
+) -> AsyncIterator[dict]:
     owner, repo = analysis.repo_name.split("/")
     analysis_id = str(analysis.id)
     language = normalize(analysis.language)
@@ -222,11 +208,11 @@ async def run_ai_phase(
         await db.commit()
         logger.info("Analyse IA %s demarree pour %s", analysis_id, analysis.repo_name)
 
-        yield sse_event({
+        yield {
             "event": "progress",
             "step": "fetching",
             "message": text("progress.fetching", language),
-        })
+        }
 
         repo_data = await fetch_repo_files(owner, repo, github_token)
         files = repo_data["files"]
@@ -237,7 +223,7 @@ async def run_ai_phase(
             await quota.release(analysis.id, db, reason="aucun fichier analysable")
             analysis.status = FAILED
             await db.commit()
-            yield sse_event({"event": "error", "message": text("progress.no_files", language)})
+            yield {"event": "error", "message": text("progress.no_files", language)}
             return
 
         chunk_result = chunk_files(files)
@@ -246,17 +232,17 @@ async def run_ai_phase(
 
         if collection_exists(user_id, analysis.repo_name, repo_sha):
             collection_name = build_collection_name(user_id, analysis.repo_name, repo_sha)
-            yield sse_event({
+            yield {
                 "event": "progress",
                 "step": "indexing",
                 "message": text("progress.index_cached", language),
-            })
+            }
         else:
-            yield sse_event({
+            yield {
                 "event": "progress",
                 "step": "indexing",
                 "message": text("progress.indexing", language),
-            })
+            }
 
             index_result = await index_chunks(
                 user_id=user_id,
@@ -266,19 +252,19 @@ async def run_ai_phase(
             )
             collection_name = index_result["collection_name"]
 
-            yield sse_event({
+            yield {
                 "event": "progress",
                 "step": "indexing",
                 "message": text(
                     "progress.indexed", language, count=index_result["chunks_indexed"],
                 ),
-            })
+            }
 
-        yield sse_event({
+        yield {
             "event": "progress",
             "step": "analyzing",
             "message": text("progress.analyzing", language),
-        })
+        }
 
         scanned = await analysis_repo.results_by_aspect(analysis.id, db)
         known_paths = set(repo_data["tracked_paths"])
@@ -302,7 +288,7 @@ async def run_ai_phase(
             for future in asyncio.as_completed(tasks):
                 step, result = await future
                 produced[step] = result
-                yield sse_event({"event": "step_complete", "step": step, "result": result})
+                yield {"event": "step_complete", "step": step, "result": result}
         finally:
             await _drain_pending(tasks)
 
@@ -311,7 +297,7 @@ async def run_ai_phase(
             await quota.release(analysis.id, db, reason="tous les agents en erreur")
             analysis.status = FAILED
             await db.commit()
-            yield sse_event({"event": "error", "message": text("progress.ai_failed", language)})
+            yield {"event": "error", "message": text("progress.ai_failed", language)}
             return
 
         await _merge_ai_into_scan(analysis, produced, known_paths, db)
@@ -323,14 +309,14 @@ async def run_ai_phase(
         await db.commit()
 
         logger.info("Analyse IA %s terminee avec succes", analysis_id)
-        yield sse_event({"event": "done", "analysis_id": analysis_id, "status": COMPLETED})
+        yield {"event": "done", "analysis_id": analysis_id, "status": COMPLETED}
 
     except Exception as exc:
         logger.error("Analyse IA %s echouee: %s", analysis_id, exc, exc_info=True)
         await quota.release(analysis.id, db, reason=type(exc).__name__)
         analysis.status = FAILED
         await db.commit()
-        yield sse_event({"event": "error", "message": str(exc)})
+        yield {"event": "error", "message": str(exc)}
 
 
 def _axis_event(result: dict) -> dict:

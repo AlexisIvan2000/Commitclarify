@@ -50,7 +50,7 @@ async def scan_quality(
     )
     linter_issues = [issue for issue in ruff_issues + eslint_issues if issue["rule"] != "C901"]
 
-    complexity_findings, scores = _complexity_findings(files, language)
+    complexity_findings, scores = await asyncio.to_thread(_complexity_findings, files, language)
     unpinned = _unpinned_requirements(files)
     metrics = _metrics(
         files,

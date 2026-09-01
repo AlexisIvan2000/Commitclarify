@@ -1,5 +1,4 @@
 import uuid
-from datetime import timedelta
 
 import pytest
 import pytest_asyncio
@@ -34,14 +33,22 @@ def test_failed_analysis_cannot_be_replayed():
         pipeline.assert_runnable(_analysis("failed"))
 
 
-def test_running_analysis_cannot_be_started_twice():
+def test_an_orphaned_running_analysis_is_relaunched():
+    pipeline.assert_runnable(_analysis("processing"))
+    pipeline.assert_runnable(_analysis("scanning"))
+
+
+def test_a_scanned_analysis_can_be_deepened():
+    pipeline.assert_analyzable(_analysis("scanned"))
+
+
+def test_an_orphaned_ai_analysis_is_relaunched():
+    pipeline.assert_analyzable(_analysis("analyzing"))
+
+
+def test_a_completed_ai_analysis_cannot_be_replayed():
     with pytest.raises(ConflictError):
-        pipeline.assert_runnable(_analysis("processing"))
-
-
-def test_stale_running_analysis_can_be_recovered():
-    stale = _analysis("processing", created_at=utcnow() - timedelta(hours=2))
-    pipeline.assert_runnable(stale)
+        pipeline.assert_analyzable(_analysis("completed"))
 
 
 @pytest_asyncio.fixture

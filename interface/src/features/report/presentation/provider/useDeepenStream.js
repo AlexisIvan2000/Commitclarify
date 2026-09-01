@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { messageOf } from '@core/network/errors'
-import { fetchAnalysis, openDeepenStream } from '@features/scan/data/analysisApi'
+import { getStrings } from '@core/translation'
+import { openDeepenStream } from '@features/scan/data/analysisApi'
+import followRun, { RUN_OUTCOMES } from '@features/scan/presentation/provider/followRun'
 import {
   STREAM_PHASES,
-  TERMINAL_EVENTS,
   emptyStreamState,
   reduceEvent,
 } from '@features/scan/presentation/provider/streamEvents'
@@ -14,43 +15,54 @@ export default function useDeepenStream(analysisId, onFinished) {
   const [state, setState] = useState(() => emptyStreamState(STREAM_PHASES.idle))
 
   const running = useRef(false)
-  const mounted = useRef(true)
+  const connection = useRef(null)
   const finishedCallback = useRef(onFinished)
-  finishedCallback.current = onFinished
 
   useEffect(() => {
-    mounted.current = true
-    return () => { mounted.current = false }
-  }, [])
+    finishedCallback.current = onFinished
+  }, [onFinished])
+
+  useEffect(() => () => connection.current?.abort(), [])
 
   const start = useCallback(async () => {
     if (running.current || !analysisId) return
     running.current = true
 
+    const controller = new AbortController()
+    connection.current = controller
+
     setState(emptyStreamState(STREAM_PHASES.streaming))
 
     try {
-      let finished = false
+      const { outcome, analysis } = await followRun({
+        analysisId,
+        openStream: openDeepenStream,
+        onEvent: event => setState(previous => reduceEvent(previous, event)),
+        signal: controller.signal,
+      })
 
-      for await (const event of openDeepenStream(analysisId)) {
-        if (mounted.current) setState(previous => reduceEvent(previous, event))
-        if (TERMINAL_EVENTS.has(event.event)) {
-          finished = event.event === 'done'
-          break
-        }
-      }
+      if (controller.signal.aborted) return
 
-      if (finished && mounted.current) {
-        finishedCallback.current?.(await fetchAnalysis(analysisId))
-      }
-    } catch (caught) {
-      if (mounted.current) {
+      if (outcome === RUN_OUTCOMES.lost) {
         setState(previous => ({
           ...previous,
+          reconnecting: false,
+          recoverable: true,
           phase: STREAM_PHASES.error,
-          error: messageOf(caught),
+          error: getStrings().errors.streamLost,
         }))
+        return
       }
+
+      if (outcome === RUN_OUTCOMES.done && analysis) finishedCallback.current?.(analysis)
+    } catch (caught) {
+      if (controller.signal.aborted) return
+      setState(previous => ({
+        ...previous,
+        reconnecting: false,
+        phase: STREAM_PHASES.error,
+        error: messageOf(caught),
+      }))
     } finally {
       running.current = false
     }

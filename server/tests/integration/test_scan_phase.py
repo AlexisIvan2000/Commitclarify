@@ -1,4 +1,3 @@
-import json
 import uuid
 from datetime import timedelta
 from pathlib import Path
@@ -51,12 +50,8 @@ REPO_DATA = {
 }
 
 
-def _events(raw: list[str]) -> list[dict]:
-    return [json.loads(chunk.removeprefix("data: ").strip()) for chunk in raw]
-
-
 async def _drain(generator) -> list[dict]:
-    return _events([chunk async for chunk in generator])
+    return [event async for event in generator]
 
 
 REPOSITORY = {"id": 424242, "full_name": "owner/repo", "default_branch": "main"}
@@ -364,8 +359,8 @@ def test_a_stale_ai_phase_can_be_recovered():
     pipeline.assert_analyzable(_analysis("analyzing", created_at=utcnow() - timedelta(hours=2)))
 
 
-def test_a_running_ai_phase_cannot_be_started_twice():
+def test_a_completed_ai_phase_cannot_be_started_twice():
     with pytest.raises(ConflictError) as error:
-        pipeline.assert_analyzable(_analysis("analyzing"))
+        pipeline.assert_analyzable(_analysis("completed"))
 
-    assert error.value.code == "analysis_running"
+    assert error.value.code == "analysis_finished"

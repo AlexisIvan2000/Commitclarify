@@ -88,7 +88,19 @@ function ReportPage() {
             />
           )}
 
-          {deepen.phase === STREAM_PHASES.error && <ErrorState message={deepen.error} />}
+          {deepen.reconnecting && (
+            <p className="stream-notice">
+              <Icons.running size={14} variant="Linear" className="spinning" />
+              {t.analysis.reconnecting}
+            </p>
+          )}
+
+          {deepen.phase === STREAM_PHASES.error && (
+            <ErrorState
+              message={deepen.error}
+              onRetry={deepen.recoverable ? deepen.start : undefined}
+            />
+          )}
 
           <AnalysisReport
             analysis={shown}

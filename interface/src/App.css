@@ -762,6 +762,19 @@
   flex: 1;
 }
 
+.stream-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.6rem 0.9rem;
+  font-size: 13px;
+  color: var(--sev-medium-fg);
+  background: var(--sev-medium-bg);
+  border: 1px solid var(--sev-medium-bd);
+  border-radius: var(--radius);
+}
+
 .analysis-stepper {
   display: flex;
   align-items: flex-start;

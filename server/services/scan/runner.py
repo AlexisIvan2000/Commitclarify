@@ -36,12 +36,18 @@ async def run_scan(
 
     quality_task = asyncio.create_task(scan_quality(files, language, tracked_paths))
 
+    secrets, gitignore, documentation = await asyncio.gather(
+        asyncio.to_thread(scan_secrets, files, language),
+        asyncio.to_thread(scan_gitignore, files, language, tracked_paths),
+        asyncio.to_thread(scan_documentation, files, language, tracked_paths),
+    )
+
     results = {
-        "secrets_detection": scan_secrets(files, language),
-        "gitignore_check": scan_gitignore(files, language, tracked_paths),
-        "readme_check": scan_documentation(files, language, tracked_paths),
+        "secrets_detection": secrets,
+        "gitignore_check": gitignore,
+        "readme_check": documentation,
+        "quality_check": await quality_task,
     }
-    results["quality_check"] = await quality_task
 
     axes = {axis: results[axis] for axis in AXES}
     complete = coverage_is_complete(coverage)

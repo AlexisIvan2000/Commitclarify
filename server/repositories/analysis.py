@@ -134,6 +134,16 @@ async def count_runs_today(github_id: int, db: AsyncSession) -> int:
     return result.scalar() or 0
 
 
+async def has_live_reservation(analysis_id: uuid.UUID, db: AsyncSession) -> bool:
+    result = await db.execute(
+        select(func.count()).select_from(AnalysisLog).where(
+            AnalysisLog.analysis_id == analysis_id,
+            _live_reservation(),
+        )
+    )
+    return (result.scalar() or 0) > 0
+
+
 def stage_reservation(
     github_id: int,
     analysis_id: uuid.UUID,

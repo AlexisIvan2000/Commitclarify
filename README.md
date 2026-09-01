@@ -76,6 +76,8 @@ server/
 
 Dependencies flow one way: `api → services → repositories → models`, and `core` depends on nothing. **No SQL query lives outside `repositories/`**, and no service knows about HTTP — domain errors bubble up through an `AppError` hierarchy that a global handler turns into responses.
 
+> **Runs on a single worker.** `services/analysis/runs.py` keeps the live scan registry in memory, and that registry alone carries three guarantees: resuming a stream after a disconnect, the one-concurrent-scan-per-user limit, and orphan detection (an analysis stuck at `scanning` with no live run is relaunchable). All three break silently under several workers — a user could start two scans, and a client reconnecting to another worker would find nothing and relaunch it. Moving past one worker means moving the registry to a shared Redis (pub/sub for the SSE stream, TTL keys for concurrency).
+
 ### Frontend — feature-first
 
 ```

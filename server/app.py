@@ -14,6 +14,7 @@ from core import maintenance
 from core.exceptions import register_exception_handlers
 from core.rate_limit import limiter
 from core.schema import upgrade_schema
+from services.analysis import runs
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,6 +45,7 @@ async def lifespan(app: FastAPI):
     yield
 
     await maintenance.stop(sweeper)
+    await runs.shutdown()
     await engine.dispose()
     logger.info("Arret de CommitClarify")
 
